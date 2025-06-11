@@ -46,7 +46,9 @@ export default function App() {
       synth_tempo: 100, // the tempo of the synthesized audio
       tempo: 100, // the tempo in the tempo box (even if changed more recently)
       score_tempo: 100, // the tempo in the musical score
-      scores: [] // the list of scores to choose from
+      scores: [], // the list of scores to choose from
+      referenceAudioUri: null as string | null, // reference to score's top voice audio
+
     },
   );
 

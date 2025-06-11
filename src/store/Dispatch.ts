@@ -111,6 +111,14 @@ const reducer_function = (state: any, action: any) => {
             [action.score.filename]: action.score.content, // Add the new score content to the scoreContents object using the filename as the key
           },
         };
+
+      case "change_reference_audio":
+        // store the URI so ScoreFollower can pick it up
+        console.log("[reducer] referenceAudioUri stored in state:", action.referenceAudioUri);
+        return {
+          ...state,
+          referenceAudioUri: action.referenceAudioUri as string,
+        };
         
     default: // If no valid type, return state, otherwise the function returns null and the state is gone.
       return state;

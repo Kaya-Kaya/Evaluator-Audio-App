@@ -1,11 +1,13 @@
  import { StyleSheet, View, Text, Animated, Platform, TouchableOpacity } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import Icon from "react-native-vector-icons/FontAwesome";
 import  scoresData  from '../musicxml/scores';
 import  scoreToMidi   from '../musicxml/scoreToMidi';
+  import { Audio } from 'expo-av';
+import { Button } from 'react-native';
 
 import { Asset } from "expo-asset";
 import AudioGenerator from "../audio/AudioGenerator";
@@ -18,7 +20,7 @@ export function Score_Select({
   button_format,
   button_text_style
 }: {
-  state: { score: string; scores: string[] };
+  state: { score: string; scores: string[], referenceAudioUri: string | null};
   dispatch: Function;
   textStyle: Animated.AnimatedInterpolation<string | number>;
   borderStyle: Animated.AnimatedInterpolation<string | number>
@@ -57,6 +59,38 @@ export function Score_Select({
     dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles }); // pass in defined array of musicxml files
   }, [dispatch]);
 
+  useEffect(() => {
+    console.log("[Score_Select] referenceAudioUri is now:", state.referenceAudioUri);
+  }, [state.referenceAudioUri]);
+
+
+// inside your component body:
+const [refSound, setRefSound] = useState<Audio.Sound | null>(null);
+
+// Clean up when unmounting or when a new sound is loaded
+useEffect(() => {
+  return () => {
+    if (refSound) {
+      refSound.unloadAsync();
+    }
+  };
+}, [refSound]);
+
+const playReferenceAudio = async () => {
+  if (!state.referenceAudioUri) return;
+
+  // Unload old sound if any
+  if (refSound) {
+    await refSound.unloadAsync();
+  }
+
+  // Load the new WAV file
+  const { sound } = await Audio.Sound.createAsync(
+    { uri: state.referenceAudioUri },
+    { shouldPlay: true }
+  );
+  setRefSound(sound);
+};
   // Web file upload handler
   const noteFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -131,6 +165,12 @@ export function Score_Select({
     <View>
       <Animated.Text style={[{color: textStyle}, styles.text]}>Select a score:</Animated.Text>
       <View style={styles.input}>
+        {state.referenceAudioUri && (
+          <Button
+            title="Play Reference Audio"
+            onPress={playReferenceAudio}
+          />
+        )}
         <RNPickerSelect
           key={state.scores.length} //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
           onValueChange={(value) => {
@@ -158,7 +198,7 @@ export function Score_Select({
           // Drop down arrow for mobile to select score
           Icon={Platform.OS !== 'web' ? () => <Icon name="chevron-down" size={16} color="#000" /> : undefined}
         />
-        <AudioGenerator midiModule={scoreToMidi[state.score]} />
+        <AudioGenerator midiModule={scoreToMidi[state.score]} dispatch={dispatch}/>
       </View>
 
       <Animated.Text style={{ color: textStyle, marginTop: 12}}>Or upload a new score:</Animated.Text>
