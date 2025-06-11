@@ -80,6 +80,7 @@ const reducer_function = (state: any, action: any) => {
         ...state,
         ...{
           score: action.score,
+          accompanimentSound: action.accompanimentSound,
           playing: false,
           timestamp: 0.0,
           playRate: 1.0,

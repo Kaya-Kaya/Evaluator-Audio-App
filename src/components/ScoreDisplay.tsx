@@ -4,7 +4,7 @@ import { Cursor, OpenSheetMusicDisplay, Fraction, SourceMeasure } from "openshee
 import Icon from "react-native-vector-icons/FontAwesome";
 import scoresData from "../musicxml/scores"; // Local mapping of score filenames to XML content
 import { WebView } from "react-native-webview";
-
+import AudioGenerator from "../audio/AudioGenerator";
 export default function ScoreDisplay({
   state,
   dispatch,

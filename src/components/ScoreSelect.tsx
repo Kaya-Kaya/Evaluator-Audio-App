@@ -1,9 +1,14 @@
-import { StyleSheet, View, Text, Animated, Platform, TouchableOpacity } from "react-native";
+ import { StyleSheet, View, Text, Animated, Platform, TouchableOpacity } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 import React, { useEffect } from "react";
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import Icon from "react-native-vector-icons/FontAwesome";
+import  scoresData  from '../musicxml/scores';
+import  scoreToMidi   from '../musicxml/scoreToMidi';
+
+import { Asset } from "expo-asset";
+import AudioGenerator from "../audio/AudioGenerator";
 
 export function Score_Select({
   state,
@@ -27,7 +32,7 @@ export function Score_Select({
   //       const response = await fetch("http://127.0.0.1:5000/scores"); // Replace with your backend endpoint
   //       console.log("Response is: ", response);
   //       if (!response.ok) {
-  //         throw new Error(`HTTP error! status: ${response.status}`);
+  //         throw new Error(HTTP error! status: ${response.status});
   //       }
   //       const data = await response.json();
   //       const scores = data.files;
@@ -131,7 +136,16 @@ export function Score_Select({
           onValueChange={(value) => {
             console.log("The dispatch function is being sent.");
             console.log("val: ", value)
-            dispatch({ type: "change_score", score: value });
+
+            const midiModule = scoreToMidi[value];
+            
+            // dispatch both into state
+            dispatch({
+              type: 'change_score',
+              score: value,
+              accompanimentSound: midiModule,
+            });
+            //dispatch({ type: "change_score", score: value });
           }}
           items={state.scores.map((score) => ({
             label: score,
@@ -144,6 +158,7 @@ export function Score_Select({
           // Drop down arrow for mobile to select score
           Icon={Platform.OS !== 'web' ? () => <Icon name="chevron-down" size={16} color="#000" /> : undefined}
         />
+        <AudioGenerator midiModule={scoreToMidi[state.score]} />
       </View>
 
       <Animated.Text style={{ color: textStyle, marginTop: 12}}>Or upload a new score:</Animated.Text>
