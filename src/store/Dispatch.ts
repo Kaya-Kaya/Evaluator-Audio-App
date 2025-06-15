@@ -119,6 +119,30 @@ const reducer_function = (state: any, action: any) => {
           ...state,
           referenceAudioUri: action.referenceAudioUri as string,
         };
+
+      
+      // New action to set estimated beat
+      case "SET_ESTIMATED_BEAT":
+        console.log("[reducer] Estimated beat:", action.payload);
+        return {
+          ...state,
+          estimatedBeat: action.payload as number,
+        };
+
+      // New action for errors in beat estimation
+      case "SET_ESTIMATED_BEAT_ERROR":
+        console.error("[reducer] Estimated beat error:", action.payload);
+        return {
+          ...state,
+          estimatedBeatError: action.payload as string,
+        };
+      case "change_bottom_audio":
+        // store the URI so ScoreFollower can pick it up
+        console.log("[reducer] bottomAudioUri stored in state:", action.bottomAudioUri);
+        return {
+          ...state,
+          bottomAudioUri: action.bottomAudioUri as string,
+        };
         
     default: // If no valid type, return state, otherwise the function returns null and the state is gone.
       return state;

@@ -6,9 +6,8 @@ import * as FileSystem from 'expo-file-system';
 import Icon from "react-native-vector-icons/FontAwesome";
 import  scoresData  from '../musicxml/scores';
 import  scoreToMidi   from '../musicxml/scoreToMidi';
-  import { Audio } from 'expo-av';
+import { Audio } from 'expo-av';
 import { Button } from 'react-native';
-
 import { Asset } from "expo-asset";
 import AudioGenerator from "../audio/AudioGenerator";
 
@@ -165,12 +164,6 @@ const playReferenceAudio = async () => {
     <View>
       <Animated.Text style={[{color: textStyle}, styles.text]}>Select a score:</Animated.Text>
       <View style={styles.input}>
-        {state.referenceAudioUri && (
-          <Button
-            title="Play Reference Audio"
-            onPress={playReferenceAudio}
-          />
-        )}
         <RNPickerSelect
           key={state.scores.length} //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
           onValueChange={(value) => {
@@ -198,6 +191,12 @@ const playReferenceAudio = async () => {
           // Drop down arrow for mobile to select score
           Icon={Platform.OS !== 'web' ? () => <Icon name="chevron-down" size={16} color="#000" /> : undefined}
         />
+        {state.referenceAudioUri && (
+          <TouchableOpacity onPress={playReferenceAudio} style={styles.button}>
+            <Text style={styles.button_text}>Play Reference Audio</Text>
+          </TouchableOpacity>
+
+        )}
         <AudioGenerator midiModule={scoreToMidi[state.score]} dispatch={dispatch}/>
       </View>
 
@@ -241,4 +240,9 @@ const styles = StyleSheet.create({
   input: {
     paddingVertical: 12
   },
+  button: {
+    padding:10, borderRadius:8, alignItems:'center', marginVertical:5,
+    shadowColor:'#000', shadowOffset:{ width:0, height:3 }, shadowOpacity:0.17, shadowRadius:3.05, elevation:4, backgroundColor:'#2C3E50' 
+  },
+  button_text: { textAlign:'center', fontSize:14, color:'#FFF', fontWeight:'bold' },
 })
