@@ -1,9 +1,15 @@
-import { StyleSheet, View, Text, Animated, Platform, TouchableOpacity } from "react-native";
+ import { StyleSheet, View, Text, Animated, Platform, TouchableOpacity } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import Icon from "react-native-vector-icons/FontAwesome";
+import  scoresData  from '../musicxml/scores';
+import  scoreToMidi   from '../musicxml/scoreToMidi';
+import { Audio } from 'expo-av';
+import { Button } from 'react-native';
+import { Asset } from "expo-asset";
+import AudioGenerator from "../audio/AudioGenerator";
 
 export function Score_Select({
   state,
@@ -13,7 +19,7 @@ export function Score_Select({
   button_format,
   button_text_style
 }: {
-  state: { score: string; scores: string[] };
+  state: { score: string; scores: string[], referenceAudioUri: string | null};
   dispatch: Function;
   textStyle: Animated.AnimatedInterpolation<string | number>;
   borderStyle: Animated.AnimatedInterpolation<string | number>
@@ -27,7 +33,7 @@ export function Score_Select({
   //       const response = await fetch("http://127.0.0.1:5000/scores"); // Replace with your backend endpoint
   //       console.log("Response is: ", response);
   //       if (!response.ok) {
-  //         throw new Error(`HTTP error! status: ${response.status}`);
+  //         throw new Error(HTTP error! status: ${response.status});
   //       }
   //       const data = await response.json();
   //       const scores = data.files;
@@ -52,6 +58,38 @@ export function Score_Select({
     dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles }); // pass in defined array of musicxml files
   }, [dispatch]);
 
+  useEffect(() => {
+    console.log("[Score_Select] referenceAudioUri is now:", state.referenceAudioUri);
+  }, [state.referenceAudioUri]);
+
+
+// inside your component body:
+const [refSound, setRefSound] = useState<Audio.Sound | null>(null);
+
+// Clean up when unmounting or when a new sound is loaded
+useEffect(() => {
+  return () => {
+    if (refSound) {
+      refSound.unloadAsync();
+    }
+  };
+}, [refSound]);
+
+const playReferenceAudio = async () => {
+  if (!state.referenceAudioUri) return;
+
+  // Unload old sound if any
+  if (refSound) {
+    await refSound.unloadAsync();
+  }
+
+  // Load the new WAV file
+  const { sound } = await Audio.Sound.createAsync(
+    { uri: state.referenceAudioUri },
+    { shouldPlay: true }
+  );
+  setRefSound(sound);
+};
   // Web file upload handler
   const noteFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -131,7 +169,16 @@ export function Score_Select({
           onValueChange={(value) => {
             console.log("The dispatch function is being sent.");
             console.log("val: ", value)
-            dispatch({ type: "change_score", score: value });
+
+            const midiModule = scoreToMidi[value];
+            
+            // dispatch both into state
+            dispatch({
+              type: 'change_score',
+              score: value,
+              accompanimentSound: midiModule,
+            });
+            //dispatch({ type: "change_score", score: value });
           }}
           items={state.scores.map((score) => ({
             label: score,
@@ -144,6 +191,13 @@ export function Score_Select({
           // Drop down arrow for mobile to select score
           Icon={Platform.OS !== 'web' ? () => <Icon name="chevron-down" size={16} color="#000" /> : undefined}
         />
+        {state.referenceAudioUri && (
+          <TouchableOpacity onPress={playReferenceAudio} style={styles.button}>
+            <Text style={styles.button_text}>Play Reference Audio</Text>
+          </TouchableOpacity>
+
+        )}
+        <AudioGenerator midiModule={scoreToMidi[state.score]} dispatch={dispatch}/>
       </View>
 
       <Animated.Text style={{ color: textStyle, marginTop: 12}}>Or upload a new score:</Animated.Text>
@@ -186,4 +240,9 @@ const styles = StyleSheet.create({
   input: {
     paddingVertical: 12
   },
+  button: {
+    padding:10, borderRadius:8, alignItems:'center', marginVertical:5,
+    shadowColor:'#000', shadowOffset:{ width:0, height:3 }, shadowOpacity:0.17, shadowRadius:3.05, elevation:4, backgroundColor:'#2C3E50' 
+  },
+  button_text: { textAlign:'center', fontSize:14, color:'#FFF', fontWeight:'bold' },
 })

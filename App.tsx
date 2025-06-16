@@ -18,7 +18,6 @@ import Icon from 'react-native-vector-icons/Feather';
 import { ChromaMaker } from "./src/audio/features";
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { ExpoMicProcessor } from './src/audio/ExpoMicProcessor';
-
 // Define the main application component
 export default function App() {
   ////////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +45,12 @@ export default function App() {
       synth_tempo: 100, // the tempo of the synthesized audio
       tempo: 100, // the tempo in the tempo box (even if changed more recently)
       score_tempo: 100, // the tempo in the musical score
-      scores: [] // the list of scores to choose from
+      scores: [], // the list of scores to choose from
+      referenceAudioUri: null as string | null, // reference to score's top voice audio
+      estimatedBeat: null as number | null,
+      estimatedBeatError: null as string | null,
+      bottomAudioUri:   null as string | null,  //playback audio uri
+
     },
   );
 
@@ -348,7 +352,6 @@ export default function App() {
 
     // BG Color for iphone padding - no padding if on landscape mode (top and bottom)
     <SafeAreaView style={[styles.container, {backgroundColor: width < height? '#2C3E50': ""}]} >
-
       {/* Account for top padding on Iphone */}
       <SafeAreaView > 
         {/* Header with image */}

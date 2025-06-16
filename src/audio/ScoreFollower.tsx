@@ -8,11 +8,25 @@ export class ScoreFollower {
   sampleRate: number;
   winLength: number;
   chromaMaker: ChromaMaker;
-  ref: number[][];
-  otw: OnlineTimeWarping;
+  ref!: number[][];
+  otw!: OnlineTimeWarping;
   path: Array<[number, number]>;
 
   /**
+   * Private constructor. Use the static async create() method to instantiate.
+   */
+  private constructor(
+    sampleRate: number,
+    winLength: number
+  ) {
+    this.sampleRate = sampleRate;
+    this.winLength = winLength;
+    this.chromaMaker = new ChromaMaker(sampleRate, winLength);
+    this.path = [];
+  }
+
+  /**
+   * Asynchronously creates a ScoreFollower by loading the reference audio and initializing OTW.
    * @param reference Path to reference audio file
    * @param c Width of online DTW search (default 10)
    * @param maxRunCount Slope constraint for online DTW (default 3)
@@ -20,21 +34,14 @@ export class ScoreFollower {
    * @param sampleRate Sample rate of the audio buffer (default 44100)
    * @param winLength Number of frames per chroma feature (default 8192)
    */
-  constructor(
+  static async create(
     reference: string,
     c = 10,
     maxRunCount = 3,
     diagWeight = 0.4,
     sampleRate = 44100,
     winLength = 8192
-  ) {
-    this.sampleRate = sampleRate;
-    this.winLength = winLength;
-
-    // Instantiate ChromaMaker object
-    this.chromaMaker = new ChromaMaker(sampleRate, winLength);
-
-    // Params for OTW
+  ): Promise<ScoreFollower> {
     const params = {
       sr: sampleRate,
       n_fft: winLength,
@@ -44,14 +51,10 @@ export class ScoreFollower {
       diag_weight: diagWeight,
     };
 
-    // Load reference sequence of CENS features
-    this.ref = file_to_np_cens(reference, params);
-
-    // Initialize OTW object
-    this.otw = new OnlineTimeWarping(this.ref, params);
-
-    // Online DTW alignment path
-    this.path = [];
+    const instance = new ScoreFollower(sampleRate, winLength);
+    instance.ref = await file_to_np_cens(reference, params);
+    instance.otw = new OnlineTimeWarping(instance.ref, params);
+    return instance;
   }
 
   /**
@@ -65,7 +68,7 @@ export class ScoreFollower {
       const padding = Array(this.winLength - audio.length).fill(0);
       audio = audio.concat(padding);
     }
-    return this.chromaMaker.insert(audio);
+    return this.chromaMaker.insert(audio as Float32Array | number[]);
   }
 
   /**
@@ -120,6 +123,8 @@ export class ScoreFollower {
    * @returns Path elements in forward path but not in backPath
    */
   getPathDifference(backPath: Array<[number, number]>): Array<[number, number]> {
-    return this.path.filter(([r, l]) => !backPath.some(([br, bl]) => br === r && bl === l));
+    return this.path.filter(
+      ([r, l]) => !backPath.some(([br, bl]) => br === r && bl === l)
+    );
   }
 }
