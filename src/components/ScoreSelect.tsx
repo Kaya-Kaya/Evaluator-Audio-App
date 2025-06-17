@@ -51,7 +51,9 @@ export function Score_Select({
   // Array of score names used to render score display options 
   const musicxmlFiles: string[] = [
     'air_on_the_g_string.musicxml',
-    'twelve_duets.musicxml',
+    'schumann_melodyVLCduet.musicxml',
+    'sonata.musicxml',
+    'hark.musicxml'
   ];
   
   useEffect(() => {

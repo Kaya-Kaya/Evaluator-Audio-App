@@ -238,7 +238,8 @@ export default function ScoreDisplay({
       osdRef.current = osm; 
       // If score name is a key within ScoreContents use the xml content value within that key, otherwise access xml content through the static key value mapping defined within scores.ts
       const xmlContent = (state.scoreContents && state.scoreContents[state.score]) || scoresData[state.score];
-
+      console.log(state.scoreContents)
+      console.log(scoresData[state.score])
       // Error handling if no xml content for selected score is found
       if (!xmlContent) {
         console.error("Score content not found for:", state.score);
