@@ -5,6 +5,7 @@ import Icon from "react-native-vector-icons/FontAwesome";
 import scoresData from "../musicxml/scores"; // Local mapping of score filenames to XML content
 import { WebView } from "react-native-webview";
 import AudioGenerator from "../audio/AudioGenerator";
+import React from "react";
 export default function ScoreDisplay({
   state,
   dispatch,
@@ -402,7 +403,7 @@ const onMessage = (event: any) => {
   return (
     <>
       {/* Temporary inputs for testing cursor movement */}
-      <TextInput
+      {/* <TextInput
         value={steps}
         onChangeText={setSteps}
         keyboardType="numeric"
@@ -419,7 +420,7 @@ const onMessage = (event: any) => {
       onPress={moveCursorByBeats}
       >
         <Text>Start</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* Reference ScrollView Component for controlling scroll */}
       <ScrollView
@@ -446,9 +447,9 @@ const onMessage = (event: any) => {
         )}
 
         <Text style={styles.text}>
-          <Icon name="music" size={20} color="#2C3E50" /> Reference to the SVG
+          <Icon name="music" size={12} color="#2C3E50" /> Reference to the SVG
           container for sheet music{" "}
-          <Icon name="music" size={20} color="#2C3E50" />
+          <Icon name="music" size={12} color="#2C3E50" />
         </Text>
       </ScrollView>
     </>
@@ -468,7 +469,7 @@ const styles = StyleSheet.create({
     overflow: "hidden", // Ensure content doesn't overflow outside this container
   },
   text: {
-    fontSize: 20,
+    fontSize: 12,
     textAlign: "center",
     color: "#2C3E50"
   }

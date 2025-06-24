@@ -6,12 +6,12 @@ const scoresData: Record<string, string> = {
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
 <score-partwise version="4.0">
 <work>
-  <work-title>Melody</work-title>
+  <work-title>Robert Schumann – Melody</work-title>
 </work>
   <identification>
     <encoding>
       <software>MuseScore 4.5.2</software>
-      <encoding-date>2025-06-17</encoding-date>
+      <encoding-date>2025-06-20</encoding-date>
       <supports element="accidental" type="yes"/>
       <supports element="beam" type="yes"/>
       <supports element="print" attribute="new-page" type="yes" value="yes"/>
@@ -115,7 +115,7 @@ const scoresData: Record<string, string> = {
         </attributes>
       <direction placement="above" system="also-top">
         <direction-type>
-          <metronome parentheses="no" default-x="-37.68" relative-y="20">
+          <metronome parentheses="no" default-x="-37.68" default-y="13.09" relative-y="20">
             <beat-unit>quarter</beat-unit>
             <per-minute>100</per-minute>
             </metronome>
@@ -131,6 +131,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          </notations>
         <lyric number="1" default-x="6.5" default-y="-40" relative-y="-30">
           <syllabic>single</syllabic>
           <text>Schumann</text>
@@ -237,6 +240,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       </measure>
     <measure number="3" width="126.99">
@@ -249,6 +255,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          </notations>
         </note>
       <note default-x="40.67" default-y="10" dynamics="65.56">
         <pitch>
@@ -279,6 +288,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       </measure>
     <measure number="4" width="126.99">
@@ -292,6 +304,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          </notations>
         </note>
       <note default-x="40.67" default-y="-15" dynamics="46.67">
         <pitch>
@@ -312,6 +327,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       <note default-x="97.02" default-y="-20">
         <rest/>
@@ -330,6 +348,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          </notations>
         </note>
       <note default-x="40.67" default-y="0" dynamics="41.11">
         <pitch>
@@ -428,6 +449,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       </measure>
     <measure number="7" width="126.99">
@@ -440,6 +464,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          </notations>
         </note>
       <note default-x="40.67" default-y="10" dynamics="65.56">
         <pitch>
@@ -479,7 +506,7 @@ const scoresData: Record<string, string> = {
             <left-margin>0</left-margin>
             <right-margin>0</right-margin>
             </system-margins>
-          <system-distance>320</system-distance>
+          <system-distance>185</system-distance>
           </system-layout>
         </print>
       <note default-x="76.31" default-y="-10" dynamics="50">
@@ -512,6 +539,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       <note default-x="167.43" default-y="-20">
         <rest/>
@@ -521,6 +551,14 @@ const scoresData: Record<string, string> = {
         </note>
       </measure>
     <measure number="9" width="135.79">
+      <direction placement="below">
+        <direction-type>
+          <dynamics default-x="5.32" default-y="-42.47" relative-y="-20">
+            <mf/>
+            </dynamics>
+          </direction-type>
+        <sound dynamics="88.89"/>
+        </direction>
       <note default-x="12.5" default-y="0" dynamics="97.78">
         <pitch>
           <step>A</step>
@@ -530,6 +568,12 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          <articulations>
+            <accent default-x="6.5" default-y="13.3"/>
+            </articulations>
+          </notations>
         </note>
       <note default-x="42.87" default-y="-5" dynamics="96.67">
         <pitch>
@@ -551,6 +595,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       <note default-x="103.62" default-y="-20">
         <rest/>
@@ -569,6 +616,12 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          <articulations>
+            <accent default-x="6.5" default-y="23.3"/>
+            </articulations>
+          </notations>
         </note>
       <note default-x="42.87" default-y="5" dynamics="94.44">
         <pitch>
@@ -589,6 +642,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       <note default-x="103.62" default-y="-20">
         <rest/>
@@ -607,6 +663,12 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          <articulations>
+            <accent default-x="6.5" default-y="33.3"/>
+            </articulations>
+          </notations>
         </note>
       <note default-x="42.87" default-y="15" dynamics="81.11">
         <pitch>
@@ -695,6 +757,25 @@ const scoresData: Record<string, string> = {
         <dot default-x="113.33" default-y="15"/>
         <stem>down</stem>
         </note>
+      <direction placement="below">
+        <direction-type>
+          <dashes type="stop" number="1"/>
+          </direction-type>
+        </direction>
+      <backup>
+        <duration>1</duration>
+        </backup>
+      <direction placement="below">
+        <direction-type>
+          <words font-family="Edwin" font-size="10" font-style="italic" default-y="-62.47" relative-x="-8.95">dim.</words>
+          </direction-type>
+        <direction-type>
+          <dashes type="start" number="1" default-y="-62.47" relative-x="-8.95"/>
+          </direction-type>
+        </direction>
+      <forward>
+        <duration>1</duration>
+        </forward>
       <note default-x="133.84" default-y="0" dynamics="78.89">
         <pitch>
           <step>A</step>
@@ -704,9 +785,20 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>eighth</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       </measure>
     <measure number="13" width="135.79">
+      <direction placement="below">
+        <direction-type>
+          <dynamics default-x="3.09" default-y="-40" relative-y="-20">
+            <p/>
+            </dynamics>
+          </direction-type>
+        <sound dynamics="54.44"/>
+        </direction>
       <note default-x="12.5" default-y="5" dynamics="60">
         <pitch>
           <step>B</step>
@@ -716,6 +808,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          </notations>
         </note>
       <note default-x="42.87" default-y="0" dynamics="55.56">
         <pitch>
@@ -814,6 +909,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       </measure>
     <measure number="15" width="199.6">
@@ -823,7 +921,7 @@ const scoresData: Record<string, string> = {
             <left-margin>0</left-margin>
             <right-margin>0</right-margin>
             </system-margins>
-          <system-distance>320</system-distance>
+          <system-distance>185</system-distance>
           </system-layout>
         </print>
       <note default-x="76.31" default-y="20" dynamics="68.89">
@@ -835,6 +933,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          </notations>
         </note>
       <note default-x="106.68" default-y="15" dynamics="66.67">
         <pitch>
@@ -879,6 +980,10 @@ const scoresData: Record<string, string> = {
         <type>eighth</type>
         <stem>down</stem>
         <beam number="1">begin</beam>
+        <notations>
+          <slur type="stop" number="1"/>
+          <slur type="start" number="1"/>
+          </notations>
         </note>
       <note default-x="32.75" default-y="10" dynamics="52.22">
         <pitch>
@@ -923,6 +1028,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       <note default-x="123.86" default-y="-20">
         <rest/>
@@ -932,6 +1040,14 @@ const scoresData: Record<string, string> = {
         </note>
       </measure>
     <measure number="17" width="135.79">
+      <direction placement="below">
+        <direction-type>
+          <dynamics default-x="5.32" default-y="-42.47" relative-y="-20">
+            <mf/>
+            </dynamics>
+          </direction-type>
+        <sound dynamics="88.89"/>
+        </direction>
       <note default-x="12.5" default-y="0" dynamics="93.33">
         <pitch>
           <step>A</step>
@@ -941,6 +1057,12 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          <articulations>
+            <accent default-x="6.5" default-y="13.34"/>
+            </articulations>
+          </notations>
         </note>
       <note default-x="42.87" default-y="-5" dynamics="86.67">
         <pitch>
@@ -962,6 +1084,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       <note default-x="103.62" default-y="-20">
         <rest/>
@@ -980,6 +1105,12 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          <articulations>
+            <accent default-x="6.5" default-y="23.3"/>
+            </articulations>
+          </notations>
         </note>
       <note default-x="42.87" default-y="5" dynamics="96.67">
         <pitch>
@@ -1000,6 +1131,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       <note default-x="103.62" default-y="-20">
         <rest/>
@@ -1018,6 +1152,12 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          <articulations>
+            <accent default-x="6.5" default-y="33.3"/>
+            </articulations>
+          </notations>
         </note>
       <note default-x="42.87" default-y="15" dynamics="96.67">
         <pitch>
@@ -1028,6 +1168,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       <note default-x="73.24" default-y="10" dynamics="81.11">
         <pitch>
@@ -1061,6 +1204,9 @@ const scoresData: Record<string, string> = {
         <type>eighth</type>
         <stem>down</stem>
         <beam number="1">begin</beam>
+        <notations>
+          <slur type="start" number="1"/>
+          </notations>
         </note>
       <note default-x="32.75" default-y="10" dynamics="102.22">
         <pitch>
@@ -1095,6 +1241,14 @@ const scoresData: Record<string, string> = {
         <stem>down</stem>
         <beam number="1">end</beam>
         </note>
+      <direction placement="below">
+        <direction-type>
+          <words font-family="Edwin" font-size="10" font-style="italic" default-y="-62.47">dim.</words>
+          </direction-type>
+        <direction-type>
+          <dashes type="start" number="1" default-y="-62.47"/>
+          </direction-type>
+        </direction>
       <note default-x="95.34" default-y="10" dynamics="74.44">
         <pitch>
           <step>C</step>
@@ -1106,6 +1260,17 @@ const scoresData: Record<string, string> = {
         <dot default-x="113.33" default-y="15"/>
         <stem>down</stem>
         </note>
+      <backup>
+        <duration>2</duration>
+        </backup>
+      <direction placement="below">
+        <direction-type>
+          <dashes type="stop" number="1"/>
+          </direction-type>
+        </direction>
+      <forward>
+        <duration>2</duration>
+        </forward>
       <note default-x="133.84" default-y="0" dynamics="74.44">
         <pitch>
           <step>A</step>
@@ -1115,9 +1280,20 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>eighth</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       </measure>
     <measure number="21" width="135.79">
+      <direction placement="below">
+        <direction-type>
+          <dynamics default-x="3.09" default-y="-40" relative-y="-20">
+            <p/>
+            </dynamics>
+          </direction-type>
+        <sound dynamics="54.44"/>
+        </direction>
       <note default-x="12.5" default-y="5" dynamics="54.44">
         <pitch>
           <step>B</step>
@@ -1127,6 +1303,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          </notations>
         </note>
       <note default-x="42.87" default-y="0" dynamics="51.11">
         <pitch>
@@ -1137,6 +1316,9 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       <note default-x="73.24" default-y="-5" dynamics="53.33">
         <pitch>
@@ -1160,14 +1342,14 @@ const scoresData: Record<string, string> = {
         <stem>down</stem>
         </note>
       </measure>
-    <measure number="22" width="416.73">
+    <measure number="22" width="409.39">
       <print new-system="yes">
         <system-layout>
           <system-margins>
             <left-margin>0</left-margin>
             <right-margin>0</right-margin>
             </system-margins>
-          <system-distance>320</system-distance>
+          <system-distance>185</system-distance>
           </system-layout>
         </print>
       <note default-x="76.31" default-y="-15" dynamics="46.67">
@@ -1180,8 +1362,11 @@ const scoresData: Record<string, string> = {
         <type>eighth</type>
         <stem>down</stem>
         <beam number="1">begin</beam>
+        <notations>
+          <slur type="start" number="1"/>
+          </notations>
         </note>
-      <note default-x="124.69" default-y="-5" dynamics="47.78">
+      <note default-x="123.64" default-y="-5" dynamics="47.78">
         <pitch>
           <step>G</step>
           <octave>3</octave>
@@ -1192,7 +1377,7 @@ const scoresData: Record<string, string> = {
         <stem>down</stem>
         <beam number="1">continue</beam>
         </note>
-      <note default-x="173.06" default-y="-10" dynamics="54.44">
+      <note default-x="170.96" default-y="-10" dynamics="54.44">
         <pitch>
           <step>F</step>
           <alter>1</alter>
@@ -1204,7 +1389,7 @@ const scoresData: Record<string, string> = {
         <stem>down</stem>
         <beam number="1">continue</beam>
         </note>
-      <note default-x="221.43" default-y="0" dynamics="55.56">
+      <note default-x="218.29" default-y="0" dynamics="55.56">
         <pitch>
           <step>A</step>
           <octave>3</octave>
@@ -1215,7 +1400,7 @@ const scoresData: Record<string, string> = {
         <stem>down</stem>
         <beam number="1">end</beam>
         </note>
-      <note default-x="269.81" default-y="-5" dynamics="53.33">
+      <note default-x="265.61" default-y="-5" dynamics="53.33">
         <pitch>
           <step>G</step>
           <octave>3</octave>
@@ -1225,7 +1410,7 @@ const scoresData: Record<string, string> = {
         <type>quarter</type>
         <stem>down</stem>
         </note>
-      <note default-x="342.37" default-y="-20" dynamics="47.78">
+      <note default-x="336.6" default-y="-20" dynamics="47.78">
         <pitch>
           <step>D</step>
           <octave>3</octave>
@@ -1234,9 +1419,12 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
       </measure>
-    <measure number="23" width="304.54">
+    <measure number="23" width="298.25">
       <note default-x="12.5" default-y="20" dynamics="68.89">
         <pitch>
           <step>E</step>
@@ -1246,8 +1434,11 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="start" number="1"/>
+          </notations>
         </note>
-      <note default-x="85.06" default-y="15" dynamics="68.89">
+      <note default-x="83.49" default-y="15" dynamics="68.89">
         <pitch>
           <step>D</step>
           <octave>4</octave>
@@ -1257,7 +1448,7 @@ const scoresData: Record<string, string> = {
         <type>quarter</type>
         <stem>down</stem>
         </note>
-      <note default-x="157.62" default-y="10" dynamics="53.33">
+      <note default-x="154.48" default-y="10" dynamics="53.33">
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -1267,7 +1458,7 @@ const scoresData: Record<string, string> = {
         <type>quarter</type>
         <stem>down</stem>
         </note>
-      <note default-x="230.18" default-y="5" dynamics="55.56">
+      <note default-x="225.46" default-y="5" dynamics="55.56">
         <pitch>
           <step>B</step>
           <octave>3</octave>
@@ -1278,7 +1469,12 @@ const scoresData: Record<string, string> = {
         <stem>down</stem>
         </note>
       </measure>
-    <measure number="24" width="341.14">
+    <measure number="24" width="354.78">
+      <direction placement="above">
+        <direction-type>
+          <words default-y="40.54" relative-y="10">poco rit.</words>
+          </direction-type>
+        </direction>
       <note default-x="12.5" default-y="-10" dynamics="51.11">
         <pitch>
           <step>F</step>
@@ -1291,7 +1487,7 @@ const scoresData: Record<string, string> = {
         <stem>down</stem>
         <beam number="1">begin</beam>
         </note>
-      <note default-x="39.9" default-y="10" dynamics="64.44">
+      <note default-x="59.83" default-y="10" dynamics="64.44">
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -1302,7 +1498,7 @@ const scoresData: Record<string, string> = {
         <stem>down</stem>
         <beam number="1">continue</beam>
         </note>
-      <note default-x="88.27" default-y="-10" dynamics="52.22">
+      <note default-x="107.15" default-y="-10" dynamics="52.22">
         <pitch>
           <step>F</step>
           <alter>1</alter>
@@ -1314,7 +1510,7 @@ const scoresData: Record<string, string> = {
         <stem>down</stem>
         <beam number="1">continue</beam>
         </note>
-      <note default-x="136.65" default-y="0" dynamics="53.33">
+      <note default-x="154.48" default-y="0" dynamics="53.33">
         <pitch>
           <step>A</step>
           <octave>3</octave>
@@ -1325,7 +1521,7 @@ const scoresData: Record<string, string> = {
         <stem>down</stem>
         <beam number="1">end</beam>
         </note>
-      <note default-x="185.02" default-y="-5" dynamics="51.11">
+      <note default-x="201.8" default-y="-5" dynamics="51.11">
         <pitch>
           <step>G</step>
           <octave>3</octave>
@@ -1334,83 +1530,16 @@ const scoresData: Record<string, string> = {
         <voice>1</voice>
         <type>quarter</type>
         <stem>down</stem>
+        <notations>
+          <slur type="stop" number="1"/>
+          </notations>
         </note>
-      <note default-x="257.58" default-y="-20">
+      <note default-x="272.79" default-y="-20">
         <rest/>
         <duration>2</duration>
         <voice>1</voice>
         <type>quarter</type>
         </note>
-      <direction placement="above" system="also-top">
-        <direction-type>
-          <metronome parentheses="no" default-y="0.6" relative-y="20">
-            <beat-unit>quarter</beat-unit>
-            <per-minute>97</per-minute>
-            </metronome>
-          </direction-type>
-        <offset>-63</offset>
-        <sound tempo="97"/>
-        </direction>
-      <direction placement="above" system="also-top">
-        <direction-type>
-          <metronome parentheses="no" default-y="30.6" relative-y="20">
-            <beat-unit>quarter</beat-unit>
-            <per-minute>94</per-minute>
-            </metronome>
-          </direction-type>
-        <offset>-31</offset>
-        <sound tempo="94"/>
-        </direction>
-      <direction placement="above" system="also-top">
-        <direction-type>
-          <metronome parentheses="no" default-y="60.6" relative-y="20">
-            <beat-unit>quarter</beat-unit>
-            <per-minute>91</per-minute>
-            </metronome>
-          </direction-type>
-        <offset>-61</offset>
-        <sound tempo="91"/>
-        </direction>
-      <direction placement="above" system="also-top">
-        <direction-type>
-          <metronome parentheses="no" default-y="90.6" relative-y="20">
-            <beat-unit>quarter</beat-unit>
-            <per-minute>88</per-minute>
-            </metronome>
-          </direction-type>
-        <offset>-15</offset>
-        <sound tempo="88"/>
-        </direction>
-      <direction placement="above" system="also-top">
-        <direction-type>
-          <metronome parentheses="no" default-y="120.6" relative-y="20">
-            <beat-unit>quarter</beat-unit>
-            <per-minute>84</per-minute>
-            </metronome>
-          </direction-type>
-        <offset>-59</offset>
-        <sound tempo="84"/>
-        </direction>
-      <direction placement="above" system="also-top">
-        <direction-type>
-          <metronome parentheses="no" default-y="150.6" relative-y="20">
-            <beat-unit>quarter</beat-unit>
-            <per-minute>81</per-minute>
-            </metronome>
-          </direction-type>
-        <offset>-29</offset>
-        <sound tempo="81"/>
-        </direction>
-      <direction placement="above" system="also-top">
-        <direction-type>
-          <metronome parentheses="no" default-y="180.6" relative-y="20">
-            <beat-unit>quarter</beat-unit>
-            <per-minute>78</per-minute>
-            </metronome>
-          </direction-type>
-        <offset>-57</offset>
-        <sound tempo="78"/>
-        </direction>
       <barline location="right">
         <bar-style>light-heavy</bar-style>
         </barline>

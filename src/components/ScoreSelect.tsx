@@ -193,12 +193,12 @@ const playReferenceAudio = async () => {
           // Drop down arrow for mobile to select score
           Icon={Platform.OS !== 'web' ? () => <Icon name="chevron-down" size={16} color="#000" /> : undefined}
         />
-        {state.referenceAudioUri && (
+        {/* {state.referenceAudioUri && (
           <TouchableOpacity onPress={playReferenceAudio} style={styles.button}>
             <Text style={styles.button_text}>Play Reference Audio</Text>
           </TouchableOpacity>
 
-        )}
+        )} */}
         <AudioGenerator midiModule={scoreToMidi[state.score]} dispatch={dispatch}/>
       </View>
 
