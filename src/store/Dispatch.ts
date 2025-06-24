@@ -120,7 +120,6 @@ const reducer_function = (state: any, action: any) => {
           referenceAudioUri: action.referenceAudioUri as string,
         };
 
-      
       // New action to set estimated beat
       case "SET_ESTIMATED_BEAT":
         console.log("[reducer] Estimated beat:", action.payload);

@@ -18,6 +18,12 @@ import Icon from 'react-native-vector-icons/Feather';
 import { ChromaMaker } from "./src/audio/features";
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { ExpoMicProcessor } from './src/audio/ExpoMicProcessor';
+import TempoGraph from "./src/components/TempoGraph";
+
+import warping_path from "./src/test_paths/old_to_joy";
+import warpingPath1 from "./src/test_paths/greensleves";
+
+
 // Define the main application component
 export default function App() {
   ////////////////////////////////////////////////////////////////////////////////////
@@ -429,6 +435,10 @@ export default function App() {
               <Animated.View style={[styles.mainContent, {backgroundColor: mainContentBackgroundColor}, isSmallScreen ? styles.mainContentColumn : {}]}>
                 <ScoreDisplay state={state} dispatch={dispatch}/>
               </Animated.View>
+
+              <TempoGraph refTempo={100} beatsPerMeasure={4} warpingPath={warping_path} scoreName="Old to Joy"/>
+              <TempoGraph refTempo={200} beatsPerMeasure={4} warpingPath={warpingPath1} scoreName="Green Sleeves"/>
+
             </ScrollView>
           </View>
 
@@ -445,11 +455,13 @@ export default function App() {
             </View>
             
           </View> */}
+          
           {/* Footer display for status */}
           <StatusBar style="auto" />
           {/* Automatically adjusts the status bar style */}
         </ScrollView>
       </Animated.View>
+
 
       {/* Account for bottom padding on Iphone */}
       {/* <SafeAreaView>

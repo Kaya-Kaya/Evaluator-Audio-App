@@ -231,9 +231,9 @@ const AudioGenerator: React.FC<Props> = ({ midiModule, dispatch }) => {
   return (
     <View style={styles.container}>
       {/* Play button for companion playback */}
-      <TouchableOpacity style={[styles.button, { backgroundColor: '#2C3E50' }]} onPress={handlePlay}>
+      {/* <TouchableOpacity style={[styles.button, { backgroundColor: '#2C3E50' }]} onPress={handlePlay}>
         <Text style={styles.button_text}>Play Companion Playback</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* Hidden WebView for real-time playback */}
       <WebView
