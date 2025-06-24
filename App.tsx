@@ -22,6 +22,7 @@ import TempoGraph from "./src/components/TempoGraph";
 
 import warping_path from "./src/test_paths/old_to_joy";
 import warpingPath1 from "./src/test_paths/greensleves";
+import ScoreFollowerTest from "./src/components/ScoreFollowerTest";
 
 
 // Define the main application component
@@ -435,9 +436,9 @@ export default function App() {
               <Animated.View style={[styles.mainContent, {backgroundColor: mainContentBackgroundColor}, isSmallScreen ? styles.mainContentColumn : {}]}>
                 <ScoreDisplay state={state} dispatch={dispatch}/>
               </Animated.View>
-
-              <TempoGraph refTempo={100} beatsPerMeasure={4} warpingPath={warping_path} scoreName="Old to Joy"/>
-              <TempoGraph refTempo={200} beatsPerMeasure={4} warpingPath={warpingPath1} scoreName="Green Sleeves"/>
+              <ScoreFollowerTest dispatch={dispatch} state={state}/>
+              {/* <TempoGraph refTempo={100} beatsPerMeasure={4} warpingPath={warping_path} scoreName="Old to Joy"/>
+              <TempoGraph refTempo={200} beatsPerMeasure={4} warpingPath={warpingPath1} scoreName="Green Sleeves"/> */}
 
             </ScrollView>
           </View>
