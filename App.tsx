@@ -395,7 +395,7 @@ export default function App() {
             <Animated.View style={[styles.sidebar, { backgroundColor: sidebarBackgroundColor }, isSmallScreen ? styles.sidebarColumn : {}]}>
               { // List of scores, show when not in play mode
               state.inPlayMode || <Score_Select state={state} dispatch={dispatch} textStyle={textColor} borderStyle={borderBottomColor} button_text_style={invertTextColor} button_format={[styles.button, {backgroundColor: buttonBackgroundColor}]}/> }
-              <Return_Button
+              {/* <Return_Button
                 state={state}
                 dispatch={dispatch}
                 button_format={[styles.button, {backgroundColor:buttonBackgroundColor}]}
@@ -423,7 +423,12 @@ export default function App() {
                 dispatch={dispatch}
                 button_format={[styles.button, {backgroundColor: buttonBackgroundColor}]}
                 text_style={invertTextColor}
-              />
+              /> */}
+            <ScoreFollowerTest
+              score={state.score}
+              dispatch={dispatch}
+              bpm={100}
+            />
             </Animated.View>
             
             {/* Scroll View used for horizontal scolling */}
@@ -436,7 +441,6 @@ export default function App() {
               <Animated.View style={[styles.mainContent, {backgroundColor: mainContentBackgroundColor}, isSmallScreen ? styles.mainContentColumn : {}]}>
                 <ScoreDisplay state={state} dispatch={dispatch}/>
               </Animated.View>
-              <ScoreFollowerTest dispatch={dispatch} state={state}/>
               {/* <TempoGraph refTempo={100} beatsPerMeasure={4} warpingPath={warping_path} scoreName="Old to Joy"/>
               <TempoGraph refTempo={200} beatsPerMeasure={4} warpingPath={warpingPath1} scoreName="Green Sleeves"/> */}
 

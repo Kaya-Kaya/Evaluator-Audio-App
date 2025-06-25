@@ -55,16 +55,7 @@ export function Score_Select({
     'sonata.musicxml',
     'hark.musicxml'
   ];
-  const referenceAudioMap = {
-  'air_on_the_g_string.musicxml': '/air_on_the_g_string/100bpm/instrument_0.wav',
-  // Add more scores and their reference tracks here
-};
-
-// Map score filenames to live audio URIs
-const liveAudioMap = {
-  'air_on_the_g_string.musicxml': '/air_on_the_g_string/110bpm/instrument_0.wav',
-  // Add more scores and their live tracks here
-};
+  
   useEffect(() => {
     dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles }); // pass in defined array of musicxml files
   }, [dispatch]);
@@ -76,47 +67,7 @@ const liveAudioMap = {
 
 // inside your component body:
 const [refSound, setRefSound] = useState<Audio.Sound | null>(null);
-// Local state for loaded sounds
-const [refSoundObj, setRefSoundObj] = useState(null);
-const [liveSoundObj, setLiveSoundObj] = useState(null);
-  useEffect(() => {
-    return () => {
-      if (refSoundObj) {
-        refSoundObj.unloadAsync();
-      }
-      if (liveSoundObj) {
-        liveSoundObj.unloadAsync();
-      }
-    };
-  }, [refSoundObj, liveSoundObj]);
 
-  // Play the selected reference track
-  const playReferenceTrack = async () => {
-    const uri = referenceAudioMap[state.score];
-    if (!uri) return;
-    if (refSoundObj) {
-      await refSoundObj.unloadAsync();
-    }
-    const { sound } = await Audio.Sound.createAsync(
-      { uri },
-      { shouldPlay: true }
-    );
-    setRefSoundObj(sound);
-  };
-
-  // Play the selected live track
-  const playLiveTrack = async () => {
-    const uri = liveAudioMap[state.score];
-    if (!uri) return;
-    if (liveSoundObj) {
-      await liveSoundObj.unloadAsync();
-    }
-    const { sound } = await Audio.Sound.createAsync(
-      { uri },
-      { shouldPlay: true }
-    );
-    setLiveSoundObj(sound);
-  };
 // Clean up when unmounting or when a new sound is loaded
 useEffect(() => {
   return () => {
@@ -248,19 +199,6 @@ const playReferenceAudio = async () => {
           </TouchableOpacity>
 
         )} */}
-
-        {referenceAudioMap[state.score] && (
-          <TouchableOpacity onPress={playReferenceTrack} style={styles.button}>
-            <Text style={styles.button_text}>Play Reference Audio</Text>
-          </TouchableOpacity>
-        )}
-
-        {liveAudioMap[state.score] && (
-          <TouchableOpacity onPress={playLiveTrack} style={styles.button}>
-            <Text style={styles.button_text}>Play Live Audio</Text>
-          </TouchableOpacity>
-        )}
-
         <AudioGenerator midiModule={scoreToMidi[state.score]} dispatch={dispatch}/>
       </View>
 

@@ -1,51 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { View, Button, Text } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Audio } from 'expo-av';
 import { ScoreFollower } from '../audio/ScoreFollower';
 import { file_to_np_cens } from '../audio/features';
-import { Audio } from 'expo-av';
 
-// Paths to public WAV assets and tempo
-const REF_AUDIO_PATH = '/air_on_the_g_string/100bpm/instrument_0.wav';
-const LIVE_AUDIO_PATH = '/air_on_the_g_string/110bpm/instrument_0.wav';
-const BPM = 100; // reference tempo in beats per minute
+interface ScoreFollowerProps {
+  score: string;
+  dispatch: Function;
+  bpm?: number;
+}
 
-export default function ScoreFollowerTest({ state, dispatch }: { state: { estimatedBeat: number }, dispatch: Function }) {
+export default function ScoreFollowerTest({
+  score,
+  dispatch,
+  bpm = 100
+}: ScoreFollowerProps) {
+  const [processing, setProcessing] = useState(false);
+  const [estimatedBeat, setEstimatedBeat] = useState<number>(0);
   const [estimatedTime, setEstimatedTime] = useState<number>(0);
-  const [playbackSound, setPlaybackSound] = useState<Audio.Sound | null>(null);
-  const [processing, setProcessing] = useState<boolean>(false);
 
-  // Cleanup on unmount
+  // clean up audio when unmount
   useEffect(() => {
     return () => {
-      playbackSound?.unloadAsync();
     };
-  }, [playbackSound]);
+  }, []);
 
   const runFollower = async () => {
-    try {
-      setProcessing(true);
-      console.log('[ScoreFollowerTest] Loading reference audio features...');
-      const follower = await ScoreFollower.create(REF_AUDIO_PATH);
-      console.log('[ScoreFollowerTest] Reference loaded.');
+    if (!score) return;
+    setProcessing(true);
 
-      console.log('[ScoreFollowerTest] Loading live audio features...');
-      const rawFeatures = await file_to_np_cens(LIVE_AUDIO_PATH, {
+    const base = score.replace(/\.musicxml$/, '');
+    const refUri = `/${base}/${bpm}bpm/instrument_0.wav`;
+    const liveUri = `/${base}/${bpm + 10}bpm/instrument_0.wav`;
+
+    try {
+      const follower = await ScoreFollower.create(refUri);
+      const raw = await file_to_np_cens(liveUri, {
         sr: follower.sampleRate,
         n_fft: follower.winLength,
         ref_hop_len: follower.winLength,
       });
-      const M = rawFeatures[0]?.length || 0;
-      const liveFeatures = Array.from({ length: M }, (_, i) => rawFeatures.map(row => row[i]));
-      console.log('[ScoreFollowerTest] Frames count:', liveFeatures.length);
+      const M = raw[0]?.length || 0;
+      const liveFeatures = Array.from({ length: M }, (_, i) => raw.map(row => row[i]));
 
-      (follower as any).getChroma = (chroma: number[]) => chroma;
+      (follower as any).getChroma = (c: number[]) => c;
 
-      console.log('[ScoreFollowerTest] Starting playback and follower...');
+      // kick off playback
       const { sound } = await Audio.Sound.createAsync(
-        { uri: LIVE_AUDIO_PATH },
+        { uri: liveUri },
         { shouldPlay: true }
       );
-      setPlaybackSound(sound);
 
       const hopMs = (follower.winLength / follower.sampleRate) * 1000;
       let lastIdx = -1;
@@ -56,44 +60,60 @@ export default function ScoreFollowerTest({ state, dispatch }: { state: { estima
           const idx = Math.floor(status.positionMillis / hopMs);
           if (idx !== lastIdx && idx < liveFeatures.length) {
             lastIdx = idx;
-            const chromaFrame = liveFeatures[idx];
-            const timeSec = follower.step(chromaFrame);
+            const timeSec = follower.step(liveFeatures[idx]);
             setEstimatedTime(timeSec);
-            // compute beat position
-            const beatPos = timeSec * (BPM / 60);
+            const beatPos = timeSec * (bpm / 60);
+            setEstimatedBeat(beatPos);
             dispatch({ type: 'SET_ESTIMATED_BEAT', payload: beatPos });
-            console.log(`[Frame ${idx}] Time: ${timeSec.toFixed(3)}s, Beat: ${beatPos.toFixed(2)}`);
           }
         }
         if (status.didJustFinish) {
-          console.log('[ScoreFollowerTest] Playback finished');
-          setProcessing(false);
           sound.setOnPlaybackStatusUpdate(null);
+          setProcessing(false);
         }
       });
-
     } catch (err) {
-      console.error('[ScoreFollowerTest] Error:', err);
+      console.error('ScoreFollower Error:', err);
       setProcessing(false);
     }
   };
 
   return (
-    <View style={{ padding: 20 }}>
-      <Button
-        title={processing ? 'Listening...' : 'Run Score Follower'}
+    <View style={styles.container}>
+      <TouchableOpacity
+        style={[styles.button, processing && styles.disabledButton]}
         onPress={runFollower}
         disabled={processing}
-      />
-      <Text style={{ marginTop: 10, fontSize: 16 }}>
-        Estimated Reference Time: {estimatedTime.toFixed(2)}s
-      </Text>
-      <Text style={{ marginTop: 5, fontSize: 16 }}>
-        Estimated Reference Beat: {(state.estimatedBeat ?? 0).toFixed(2)}
-      </Text>
-      <Text style={{ marginTop: 5, fontSize: 14, fontStyle: 'italic' }}>
-        Live audio playing; updates reflect current alignment.
+      >
+        <Text style={styles.buttonText}>
+          {processing ? 'Running...' : 'Run Score Follower'}
+        </Text>
+      </TouchableOpacity>
+
+      <Text style={styles.label}>
+        Time: {estimatedTime.toFixed(2)}s {'→'} Beats: {estimatedBeat.toFixed(2)}
       </Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { marginVertical: 10 },
+  button: {
+    padding: 10,
+    backgroundColor: '#2C3E50',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#555',
+  },
+  buttonText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
+  label: {
+    marginTop: 8,
+    fontSize: 16,
+  },
+});
