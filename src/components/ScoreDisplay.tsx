@@ -27,13 +27,20 @@ export default function ScoreDisplay({
   const scrollPositionRef = useRef<number>(0); // ref to keep track of current y position of scroll view (used ref instead of state to prevent rerender when scroll)
   const [steps, setSteps] = useState<string>(""); // state for declaring number of intended cursor iterations
   const [speed, setSpeed] = useState<string>(""); // state for speed of cursor update
-  const [movedBeats, setMovedBeats] = useState<number>(0); // state to store current beat position
+  const movedBeats = useRef<number>(0); // ref to store current beat position (used ref instead of state to prevent multiple refreshes)
+  const animRef = useRef<number | null>(null);; // ref to store current animation id 
+
   const { width, height } = useWindowDimensions()
   const isSmallScreen = width < 960;
 
 
   const moveCursorByBeats = () => {
     const targetBeats = parseFloat(steps);
+
+    // cancel any previous animation frame before starting a new one
+    if (animRef.current !== null) {
+      cancelAnimationFrame(animRef.current);
+    }
 
     // Mobile approach
     // if (Platform.OS !== "web") {
@@ -131,7 +138,7 @@ export default function ScoreDisplay({
     // console.log('   toMove:', toMove.toFixed(3), '(targetBeats - initialBeats)');
 
     // Initialize moved beats from React state (current beat position)
-    let moved = movedBeats;
+    let moved = movedBeats.current;
 
     // console.log('   starting movedBeats state:', moved.toFixed(3));
 
@@ -164,14 +171,13 @@ export default function ScoreDisplay({
       // console.log('    next note delta:', delta.toFixed(3));
 
       moved += delta; // Accumulate the moved beats
-      setMovedBeats(moved); // Update state to reflect progress
+      movedBeats.current = moved; // Update state to reflect progress
 
       // console.log('    moved now:', moved.toFixed(3));
 
       osdRef.current!.render(); // Re-render to reflect the cursor's new position
 
-      // Schedule the next step after a short delay (default: 100ms)
-      setTimeout(stepFn, parseInt(speed, 10) || 100);
+      animRef.current = requestAnimationFrame(stepFn); // Schedule a new animation frame and store its ID (better alternative to setTimeout)
     };
     stepFn(); // Start the step loop
   };
