@@ -27,147 +27,165 @@ export default function ScoreDisplay({
   const scrollPositionRef = useRef<number>(0); // ref to keep track of current y position of scroll view (used ref instead of state to prevent rerender when scroll)
   const [steps, setSteps] = useState<string>(""); // state for declaring number of intended cursor iterations
   const [speed, setSpeed] = useState<string>(""); // state for speed of cursor update
+  const [movedBeats, setMovedBeats] = useState<number>(0); // state to store current beat position
   const { width, height } = useWindowDimensions()
   const isSmallScreen = width < 960;
 
+
   const moveCursorByBeats = () => {
+    const targetBeats = parseFloat(steps);
 
-     // Mobile approach
-    if (Platform.OS !== "web") {
+    // Mobile approach
+    // if (Platform.OS !== "web") {
+    //   if (!webviewRef.current) {
+    //     console.error("WebView not initialized.");
+    //     return;
+    //   }
 
-      // Check to make sure WebView component exists to continue 
-      if (!webviewRef.current) {
-        console.error("WebView not initialized.");
+    //   const script = `
+    //     (function() {
+    //       const osd = window.osm;
+    //       const cursor = window.cursor;
+    //       if (!osd.IsReadyToRender()) return;
+
+    //       const measures = osd.GraphicSheet.MeasureList;
+    //       if (!measures.length || !measures[0].length) return;
+    //       const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature.denominator;
+
+    //       // Compute current absolute beats under cursor
+    //       let initialBeats = 0;
+    //       const init = cursor.VoicesUnderCursor(osd.Sheet.Instruments[0]);
+    //       if (init.length && init[0].Notes.length) {
+    //         const len = init[0].Notes[0].Length;
+    //         const num = len.Numerator === 0 ? 1 : len.Numerator;
+    //         initialBeats = (num / len.Denominator) * denom;
+    //       }
+    //       console.log('   initialBeats:', initialBeats.toFixed(3));
+
+    //       const toMove = Math.max(0, ${targetBeats} - initialBeats);
+    //       console.log('   toMove:', toMove.toFixed(3), '(targetBeats - initialBeats)');
+
+    //       let moved = 0;
+
+    //       function stepFn() {
+    //         console.log(' >> stepFn()', { moved, toMove });
+    //         if (moved >= toMove) {
+    //           console.log('reached target beats:', moved.toFixed(3));
+    //           osd.render();
+    //           return;
+    //         }
+    //         cursor.next();
+    //         const cur = cursor.VoicesUnderCursor(osd.Sheet.Instruments[0]);
+    //         let delta = 0;
+    //         if (cur.length && cur[0].Notes.length) {
+    //           const len = cur[0].Notes[0].Length;
+    //           const num = len.Numerator === 0 ? 1 : len.Numerator;
+    //           delta = (num / len.Denominator) * denom;
+    //         }
+    //         console.log('    next note delta:', delta.toFixed(3));
+    //         moved += delta;
+    //         console.log('    moved now:', moved.toFixed(3));
+    //         osd.render();
+    //         setTimeout(stepFn, ${parseInt(speed)});
+    //       }
+    //       stepFn();
+    //     })(); true;
+    //   `;
+    //   webviewRef.current.injectJavaScript(script);
+    //   return;
+    // }
+
+    // --- WEB branch ---
+    if (!osdRef.current!.IsReadyToRender()) {
+      //  Make sure the OSD system is ready before moving the cursor
+      console.warn("Please call load() and render() before stepping cursor.");
+      return;
+    }
+
+    // Get the list of measures from the rendered music sheet
+    const measures = osdRef.current!.GraphicSheet.MeasureList;
+    // Exit if no measures are found
+    if (!measures.length || !measures[0].length) return;
+
+    // Get the denominator of the current time signature (e.g., 4 for 4/4)
+    const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature!.denominator;
+
+    let initialBeats = 0;
+
+    // Get the voices currently under the cursor for the first instrument (only 1 instrument - Evaluator)
+    const init = cursorRef.current!.VoicesUnderCursor(
+      osdRef.current!.Sheet.Instruments[0]
+    );
+
+    // If there's at least one note, compute its beat length
+    if (init.length && init[0].Notes.length) {
+      const len = init[0].Notes[0].Length as Fraction;
+      const num = len.Numerator === 0 ? 1 : len.Numerator; // Fallback to 1 if numerator is 0 (tied notes)
+      initialBeats = (num / len.Denominator) * denom; // Convert note length to beats
+    }
+    // console.log('   initialBeats:', initialBeats.toFixed(3));
+
+    // Calculate how many beats we need to move forward
+    const toMove = Math.max(0, targetBeats - initialBeats);
+
+    // console.log('   toMove:', toMove.toFixed(3), '(targetBeats - initialBeats)');
+
+    // Initialize moved beats from React state (current beat position)
+    let moved = movedBeats;
+
+    // console.log('   starting movedBeats state:', moved.toFixed(3));
+
+    // Recursive function to advance the cursor step-by-step
+    const stepFn = () => {
+      // console.log(' >> stepFn()', { moved, toMove });
+
+      // Stop if we've moved enough beats
+      if (moved >= toMove) {
+        // console.log('reached target beats:', moved.toFixed(3));
+        osdRef.current!.render(); // Re-render the music sheet
         return;
       }
 
-      // Build one injected script that:
-      // 1. Grabs time‐sig denominator (Assumption: Only dealing with pieces with a fixed time signature)
-      // 2. Accumulates beats under the cursor (first instrument only)
-      // 3. Recursively steps until totalBeats reached or passed 
-      // This script is essentially the same movement logic on the web version 
+      // Move the cursor to the next note
+      cursorRef.current!.next();
 
-      const script = `
-        (function() {
-          const osd = window.osm;
-          const cursor = window.cursor;
-          if (!osd.IsReadyToRender()) {
-            console.warn("Please call osmd.load() and osmd.render() before stepping the cursor.");
-            return;
-          }
-          // get denom of first measure
-          const measures = osd.GraphicSheet.MeasureList;
-          if (!measures.length || !measures[0].length) {
-            console.warn("No measures found after render().");
-            return;
-          }
-          const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature.denominator;
-          // initial beats under cursor
-          let accumulated = -1;
-          const topPart = osd.Sheet.Instruments[0];
-          const initVoices = cursor.VoicesUnderCursor(topPart);
-          if (initVoices.length && initVoices[0].Notes.length) {
-            const len = initVoices[0].Notes[0].Length;
-            accumulated += (len.Numerator / len.Denominator) * denom;
-          }
-          // recursive step
-          function stepFn() {
-            if (accumulated >= ${parseInt(steps)}) {
-              osd.render();
-              return;
-            }
-            cursor.next();
-            const voices = cursor.VoicesUnderCursor(topPart);
-            if (!voices.length || !voices[0].Notes.length) {
-              console.warn("Ran out of entries before hitting target beats.");
-              //osd.render();
-              //return;
-            } else {
-              const nextLen = voices[0].Notes[0].Length;
-              accumulated += (nextLen.Numerator / nextLen.Denominator) * denom;
-             }
-            osd.render();
-            setTimeout(stepFn, ${parseInt(speed)});
-          }
-          stepFn();
-        })();
-        true;
-      `;
-      webviewRef.current.injectJavaScript(script);
-      return;
-    }
+      // Get the new note under the cursor
+      const cur = cursorRef.current!.VoicesUnderCursor(
+        osdRef.current!.Sheet.Instruments[0]
+      );
 
-
-    // Web Approach to moving cursor by beats
-
-    // Ensure OSMD is loaded and rendered
-    if (!osdRef.current!.IsReadyToRender()) {
-      console.warn("Please call osmd.load() and osmd.render() before stepping the cursor.");
-      return;
-    }
-
-    // Grab all measure’s time signature 
-    const measures = osdRef.current!.GraphicSheet.MeasureList;
-    if (!measures.length || !measures[0].length) {
-      console.warn("No measures found after render()."); // error handling when no measures are found
-      return;
-    }
-    
-    // This first part is accounting for the note that the cursor is hovering on load 
-
-    // Take the first measure's time signature denominator (e.g. 4 in “4/4”)
-    const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature!.denominator;
-  
-    // Compute the starting accumulated beats under the cursor
-    let accumulated = -1; // Represents the total number of beats the cursor has gone through (-1 so it is 0 indexed)
-
-    // Focus on only the voice entries of the first instrument
-    const topPart = osdRef.current!.Sheet.Instruments[0];
-    const initial = osdRef.current!.cursor.VoicesUnderCursor(topPart);
-    
-    // Only proceed if there’s at least one voice and that voice has at least one note
-    if (initial.length && initial[0].Notes.length) {
-      
-      // Find the value of current note. e.g. 1/4 = Quarter Note 
-      const len = initial[0].Notes[0].Length as Fraction;
-
-      // Multiply fraction value of current note by denominator of time signature to get how much beat this current note is worth
-      // The add to cumulative number of beats the cursor as went over so far
-      accumulated += (len.Numerator / len.Denominator) * denom;
-    }
-
-    // Make sure Y position is always 0 when starting the cursor 
-    let scrollPosition = 0;
-  
-    // Recursive step function used to
-    function stepFn() {
-      
-      // Stop when we've reached (or exceeded) target beats
-      if (accumulated >= parseInt(steps)) {
-        osdRef.current!.render(); // final render to show final cursor position
-        return; 
+      let delta = 0;
+      // If there's a note, compute how many beats it represents
+      if (cur.length && cur[0].Notes.length) {
+        const len = cur[0].Notes[0].Length as Fraction;
+        const num = len.Numerator === 0 ? 1 : len.Numerator;
+        delta = (num / len.Denominator) * denom;
       }
-      cursorRef.current!.next(); // Advance cursor one note 
-      
-      // Get voice entries of new position of cursor (only focused on first instrument) 
-      const voice = cursorRef.current!.VoicesUnderCursor(topPart);
+      // console.log('    next note delta:', delta.toFixed(3));
 
-      if (!voice.length || !voice[0].Notes.length) { // If no notes for first instrument, continue to next note
-        console.log("skip due to empty notes")
+      moved += delta; // Accumulate the moved beats
+      setMovedBeats(moved); // Update state to reflect progress
 
-      } else { // Case if there is a note, we get it's value in beats and add to our cumulative beats
-        const len = voice[0].Notes[0].Length as Fraction; 
-        accumulated += (len.Numerator / len.Denominator) * denom; // Find how many beats that note is worth based on denominator of time signature
-      }
+      // console.log('    moved now:', moved.toFixed(3));
 
-      osdRef.current!.render(); // Re-render to show the moved cursor
-      scrollUp(scrollPosition); // Scroll to saved position after rerendering the OSM container
-      setTimeout(stepFn, parseInt(speed)); // Schedule the next step after a delay (speed state decides how fast cursor should update)
-    }
-    // Start the cursor movement logic
-    stepFn();
-  }
-  
+      osdRef.current!.render(); // Re-render to reflect the cursor's new position
+
+      // Schedule the next step after a short delay (default: 100ms)
+      setTimeout(stepFn, parseInt(speed, 10) || 100);
+    };
+    stepFn(); // Start the step loop
+  };
+  useEffect(() => {
+    const beat = state.estimatedBeat;
+    if (typeof beat !== "number") return;  // Only proceed if beat is valid
+    setSteps(String(beat));                // Update step queue when beat changes
+  }, [state.estimatedBeat]);
+
+  useEffect(() => {
+    if (steps === "") return;       // chained useeffect to have steps state updated properly before running the cursor movement logic
+    moveCursorByBeats();            // cursor movement using the latest step & speed
+  }, [steps, speed]);
+
 
   // Build HTML for native WebView, exposing window.osm & window.cursor for moving cursor logic for mobile when injecting the js script above
   const buildHtml = (xml: string) => {
@@ -239,8 +257,7 @@ export default function ScoreDisplay({
       osdRef.current = osm; 
       // If score name is a key within ScoreContents use the xml content value within that key, otherwise access xml content through the static key value mapping defined within scores.ts
       const xmlContent = (state.scoreContents && state.scoreContents[state.score]) || scoresData[state.score];
-      console.log(state.scoreContents)
-      console.log(scoresData[state.score])
+
       // Error handling if no xml content for selected score is found
       if (!xmlContent) {
         console.error("Score content not found for:", state.score);
@@ -259,6 +276,7 @@ export default function ScoreDisplay({
             ...cursorRef.current.CursorOptions,
             follow: true,
           };
+          osdRef.current!.zoom = .65
           if (isSmallScreen) {
             osdRef.current!.zoom = .45
           }
@@ -446,11 +464,11 @@ const onMessage = (event: any) => {
           />
         )}
 
-        <Text style={styles.text}>
-          <Icon name="music" size={12} color="#2C3E50" /> Reference to the SVG
+        {/* <Text style={styles.text}>
+          <Icon name="music" size={20} color="#2C3E50" /> Reference to the SVG
           container for sheet music{" "}
-          <Icon name="music" size={12} color="#2C3E50" />
-        </Text>
+          <Icon name="music" size={20} color="#2C3E50" />
+        </Text> */}
       </ScrollView>
     </>
   );
@@ -469,7 +487,7 @@ const styles = StyleSheet.create({
     overflow: "hidden", // Ensure content doesn't overflow outside this container
   },
   text: {
-    fontSize: 12,
+    fontSize: 20,
     textAlign: "center",
     color: "#2C3E50"
   }

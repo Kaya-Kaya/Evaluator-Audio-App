@@ -286,71 +286,58 @@ function audio_to_np_cens(y: Float32Array | number[], sr: number, n_fft: number,
     }
     return chromagram;
 }
-
 /**
- * Load an audio file and convert it to an np-CENS chromagram.
- * Equivalent to Python function file_to_np_cens.
- * 
- * @param filepath - path to the audio file (WAV format expected).
- * @param params - object containing parameters: 
- *        { sr: desired sample rate (Hz), n_fft: FFT length, ref_hop_len: hop length in samples }.
- * @returns A 12 x M chromagram matrix as a 2D array of numbers.
+ * Web-compatible: Load a WAV via HTTP and compute CENS chroma.
  */
 async function file_to_np_cens(
     fileUri: string,
     params: { sr: number; n_fft: number; ref_hop_len: number }
-  ): Promise<number[][]> {
-    // Verify the file exists
-    const info = await FileSystem.getInfoAsync(fileUri, { size: true });
-    if (!info.exists) {
-      throw new Error(`File not found at ${fileUri}`);
+): Promise<number[][]> {
+    // 1. Fetch the WAV file as ArrayBuffer
+    const res = await fetch(fileUri);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch ${fileUri}: ${res.status} ${res.statusText}`);
     }
-  
-    // Read the file as a Base64‑encoded string
-    const base64 = await FileSystem.readAsStringAsync(fileUri, {
-      encoding: FileSystem.EncodingType.Base64
-    });
-    const buffer = Buffer.from(base64, 'base64');
-  
-    // Decode WAV buffer
-    const result = wav.decode(buffer.buffer as ArrayBuffer);
+    const arrayBuffer = await res.arrayBuffer();
+
+    // 2. Decode WAV buffer
+    const result = wav.decode(arrayBuffer);
     let audioData = result.channelData[0];
-  
-    // Convert to mono if needed
+
+    // 3. Convert to mono if needed
     if (result.channelData.length > 1) {
-      const numCh = result.channelData.length;
-      const len = audioData.length;
-      const mono = new Float32Array(len);
-      for (let i = 0; i < len; i++) {
-        let sum = 0;
-        for (let ch = 0; ch < numCh; ch++) sum += result.channelData[ch][i];
-        mono[i] = sum / numCh;
-      }
-      audioData = mono;
+        const numCh = result.channelData.length;
+        const len = audioData.length;
+        const mono = new Float32Array(len);
+        for (let i = 0; i < len; i++) {
+            let sum = 0;
+            for (let ch = 0; ch < numCh; ch++) sum += result.channelData[ch][i];
+            mono[i] = sum / numCh;
+        }
+        audioData = mono;
     }
-  
-    // Resample if sample rates differ
+
+    // 4. Resample if sample rates differ
     if (result.sampleRate !== params.sr) {
-      const resampled = waveResampler.resample(
-        audioData,
-        result.sampleRate,
-        params.sr
-      );
-      audioData =
-        resampled instanceof Float32Array
-          ? resampled
-          : Float32Array.from(resampled as number[]);
+        const resampled = waveResampler.resample(
+            audioData,
+            result.sampleRate,
+            params.sr
+        );
+        audioData =
+            resampled instanceof Float32Array
+                ? resampled
+                : Float32Array.from(resampled as number[]);
     }
-  
-    // Compute and return the chromagram
+
+    // 5. Compute and return the chromagram
     return audio_to_np_cens(
-      audioData,
-      params.sr,
-      params.n_fft,
-      params.ref_hop_len
+        audioData,
+        params.sr,
+        params.n_fft,
+        params.ref_hop_len
     );
-  }
-  
+}
 
 // Export functions and class for external use
 export { pitch_freqs, spec_to_pitch_mtx, ChromaMaker, audio_to_np_cens, file_to_np_cens };
