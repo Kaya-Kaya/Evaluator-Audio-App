@@ -53,7 +53,9 @@ export function Score_Select({
     'air_on_the_g_string.musicxml',
     'schumann_melodyVLCduet.musicxml',
     'sonata.musicxml',
-    'hark.musicxml'
+    'hark.musicxml',
+    'ode_to_joy.musicxml', 
+    'green_sleeves.musicxml'
   ];
   
   useEffect(() => {
