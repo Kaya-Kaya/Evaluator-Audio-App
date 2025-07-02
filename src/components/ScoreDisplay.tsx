@@ -29,6 +29,7 @@ export default function ScoreDisplay({
   const [speed, setSpeed] = useState<string>(""); // state for speed of cursor update
   const movedBeats = useRef<number>(0); // ref to store current beat position (used ref instead of state to prevent multiple refreshes)
   const animRef = useRef<number | null>(null);; // ref to store current animation id 
+  const overshootBeats = useRef<number>(0);
 
   const { width, height } = useWindowDimensions()
   const isSmallScreen = width < 960;
@@ -117,38 +118,36 @@ export default function ScoreDisplay({
     // Get the denominator of the current time signature (e.g., 4 for 4/4)
     const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature!.denominator;
 
-    let initialBeats = 0;
+    let initialBeats = movedBeats.current;
 
     // Get the voices currently under the cursor for the first instrument (only 1 instrument - Evaluator)
-    const init = cursorRef.current!.VoicesUnderCursor(
+    if (movedBeats.current === 0) {
+      const init = cursorRef.current!.VoicesUnderCursor(
       osdRef.current!.Sheet.Instruments[0]
-    );
-
-    // If there's at least one note, compute its beat length
-    if (init.length && init[0].Notes.length) {
-      const len = init[0].Notes[0].Length as Fraction;
-      const num = len.Numerator === 0 ? 1 : len.Numerator; // Fallback to 1 if numerator is 0 (tied notes)
-      initialBeats = (num / len.Denominator) * denom; // Convert note length to beats
+      );
+      if (init.length && init[0].Notes.length) {
+        const len = init[0].Notes[0].Length as Fraction;
+        const num = len.Numerator === 0 ? 1 : len.Numerator;
+        initialBeats = (num / len.Denominator) * denom;
+      }
     }
-    // console.log('   initialBeats:', initialBeats.toFixed(3));
+    movedBeats.current = initialBeats;
 
     // Calculate how many beats we need to move forward
-    const toMove = Math.max(0, targetBeats - initialBeats);
-
-    // console.log('   toMove:', toMove.toFixed(3), '(targetBeats - initialBeats)');
+    const toMove = Math.max(0, targetBeats);
 
     // Initialize moved beats from React state (current beat position)
-    let moved = movedBeats.current;
-
-    // console.log('   starting movedBeats state:', moved.toFixed(3));
+    let moved = movedBeats.current + overshootBeats.current;
+    overshootBeats.current = 0;
 
     // Recursive function to advance the cursor step-by-step
     const stepFn = () => {
-      // console.log(' >> stepFn()', { moved, toMove });
 
       // Stop if we've moved enough beats
       if (moved >= toMove) {
-        // console.log('reached target beats:', moved.toFixed(3));
+        const leftover = moved - toMove
+        overshootBeats.current = leftover;
+        movedBeats.current = toMove;
         osdRef.current!.render(); // Re-render the music sheet
         return;
       }
@@ -167,13 +166,12 @@ export default function ScoreDisplay({
         const len = cur[0].Notes[0].Length as Fraction;
         const num = len.Numerator === 0 ? 1 : len.Numerator;
         delta = (num / len.Denominator) * denom;
-      }
-      // console.log('    next note delta:', delta.toFixed(3));
+      }else {
+      console.log("No note under cursor.");
+    }
 
       moved += delta; // Accumulate the moved beats
       movedBeats.current = moved; // Update state to reflect progress
-
-      // console.log('    moved now:', moved.toFixed(3));
 
       osdRef.current!.render(); // Re-render to reflect the cursor's new position
 
@@ -181,6 +179,7 @@ export default function ScoreDisplay({
     };
     stepFn(); // Start the step loop
   };
+
   useEffect(() => {
     const beat = state.estimatedBeat;
     if (typeof beat !== "number") return;  // Only proceed if beat is valid
@@ -427,7 +426,7 @@ const onMessage = (event: any) => {
   return (
     <>
       {/* Temporary inputs for testing cursor movement */}
-      {/* <TextInput
+      <TextInput
         value={steps}
         onChangeText={setSteps}
         keyboardType="numeric"
@@ -444,7 +443,7 @@ const onMessage = (event: any) => {
       onPress={moveCursorByBeats}
       >
         <Text>Start</Text>
-      </TouchableOpacity> */}
+      </TouchableOpacity>
 
       {/* Reference ScrollView Component for controlling scroll */}
       <ScrollView
