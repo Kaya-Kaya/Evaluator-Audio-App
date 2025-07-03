@@ -173,7 +173,11 @@ export default function ScoreDisplay({
       moved += delta; // Accumulate the moved beats
       movedBeats.current = moved; // Update state to reflect progress
 
-      osdRef.current!.render(); // Re-render to reflect the cursor's new position
+      // cursorRef.current!.updateCurrentPage();
+      // just re-position the cursor DOM element:
+      cursorRef.current!.update();
+
+      // osdRef.current!.render(); // Re-render to reflect the cursor's new position
 
       animRef.current = requestAnimationFrame(stepFn); // Schedule a new animation frame and store its ID (better alternative to setTimeout)
     };
@@ -193,53 +197,53 @@ export default function ScoreDisplay({
 
 
   // Build HTML for native WebView, exposing window.osm & window.cursor for moving cursor logic for mobile when injecting the js script above
-  const buildHtml = (xml: string) => {
-    const escaped = xml
-      // Escape every backtick so that embedding this string in a JS template literal
-      // won’t accidentally terminate the literal early.
-      .replace(/`/g, "\\`")
-      // Escape every closing </script> tag so that, when injected into our <script> block,
-      // it can’t break out of that block and end our script prematurely.
-      .replace(/<\/script>/g, "<\\/script>"); 
-      return `<!DOCTYPE html>
-                <html>
-                  <head>
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  </head>
-                  <body>
-                    <div id="osmd-container"></div>
-                    <script src="https://unpkg.com/opensheetmusicdisplay@latest/build/opensheetmusicdisplay.min.js"></script>
-                    <script>
-                      (async () => {
-                        const osm = new opensheetmusicdisplay.OpenSheetMusicDisplay(
-                          document.getElementById('osmd-container'),
-                          { autoResize: true, followCursor: true }
-                        );
-                        try {
-                          await osm.load(\`${escaped}\`);
-                          osm.render();
-                          // expose for RN->WebView injection
-                          window.osm = osm;
-                          window.osm.zoom = .45;
-                          window.cursor = osm.cursor;
-                          window.cursor.show();
-                          window.cursor.CursorOptions = {
-                            ...window.cursor.CursorOptions,
-                            follow: true
-                          };
-                          window.ReactNativeWebView.postMessage(JSON.stringify({
-                            type: 'loaded',
-                            time_signature: window.cursor.Iterator.CurrentMeasure.ActiveTimeSignature,
-                            tempo: 100
-                          }));
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      })();
-                    </script>
-                  </body>
-                </html>`;
-  };
+  // const buildHtml = (xml: string) => {
+  //   const escaped = xml
+  //     // Escape every backtick so that embedding this string in a JS template literal
+  //     // won’t accidentally terminate the literal early.
+  //     .replace(/`/g, "\\`")
+  //     // Escape every closing </script> tag so that, when injected into our <script> block,
+  //     // it can’t break out of that block and end our script prematurely.
+  //     .replace(/<\/script>/g, "<\\/script>"); 
+  //     return `<!DOCTYPE html>
+  //               <html>
+  //                 <head>
+  //                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  //                 </head>
+  //                 <body>
+  //                   <div id="osmd-container"></div>
+  //                   <script src="https://unpkg.com/opensheetmusicdisplay@latest/build/opensheetmusicdisplay.min.js"></script>
+  //                   <script>
+  //                     (async () => {
+  //                       const osm = new opensheetmusicdisplay.OpenSheetMusicDisplay(
+  //                         document.getElementById('osmd-container'),
+  //                         { autoResize: true, followCursor: true }
+  //                       );
+  //                       try {
+  //                         await osm.load(\`${escaped}\`);
+  //                         osm.render();
+  //                         // expose for RN->WebView injection
+  //                         window.osm = osm;
+  //                         window.osm.zoom = .45;
+  //                         window.cursor = osm.cursor;
+  //                         window.cursor.show();
+  //                         window.cursor.CursorOptions = {
+  //                           ...window.cursor.CursorOptions,
+  //                           follow: true
+  //                         };
+  //                         window.ReactNativeWebView.postMessage(JSON.stringify({
+  //                           type: 'loaded',
+  //                           time_signature: window.cursor.Iterator.CurrentMeasure.ActiveTimeSignature,
+  //                           tempo: 100
+  //                         }));
+  //                       } catch (err) {
+  //                         console.error(err);
+  //                       }
+  //                     })();
+  //                   </script>
+  //                 </body>
+  //               </html>`;
+  // };
 
   // Web-only initialization
   useEffect(() => {
@@ -338,24 +342,24 @@ export default function ScoreDisplay({
   }, [dispatch, state.score, state.scores])
 
 // Define the handler to catch messages sent from the WebView back to React Native
-const onMessage = (event: any) => {
-  try {
-    // Extract the message string sent via window.ReactNativeWebView.postMessage(...)
-    const data = JSON.parse(event.nativeEvent.data);
+// const onMessage = (event: any) => {
+//   try {
+//     // Extract the message string sent via window.ReactNativeWebView.postMessage(...)
+//     const data = JSON.parse(event.nativeEvent.data);
 
-    // We expect a message of type 'loaded' sent after OSMD has finished rendering
-    if (data.type === 'loaded') {
-      dispatch({
-        type: 'update_piece_info',
-        time_signature: data.time_signature,
-        tempo: data.tempo,
-      });
-    }
-  } catch (e) {
-    // Catch and log any errors during message parsing or if expected fields are missing
-    console.error('Failed to parse WebView message', e);
-  }
-};
+//     // We expect a message of type 'loaded' sent after OSMD has finished rendering
+//     if (data.type === 'loaded') {
+//       dispatch({
+//         type: 'update_piece_info',
+//         time_signature: data.time_signature,
+//         tempo: data.tempo,
+//       });
+//     }
+//   } catch (e) {
+//     // Catch and log any errors during message parsing or if expected fields are missing
+//     console.error('Failed to parse WebView message', e);
+//   }
+// };
 
   const selectedXml = (state.scoreContents && state.scoreContents[state.score]) || scoresData[state.score] || "";
 
@@ -426,7 +430,7 @@ const onMessage = (event: any) => {
   return (
     <>
       {/* Temporary inputs for testing cursor movement */}
-      <TextInput
+      {/* <TextInput
         value={steps}
         onChangeText={setSteps}
         keyboardType="numeric"
@@ -443,7 +447,7 @@ const onMessage = (event: any) => {
       onPress={moveCursorByBeats}
       >
         <Text>Start</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* Reference ScrollView Component for controlling scroll */}
       <ScrollView
@@ -458,15 +462,15 @@ const onMessage = (event: any) => {
         {Platform.OS === "web" ? (
           <div ref={osmContainerRef} style={styles.osmContainer} />
         ) : (
-
-          // Otherwise use WebView component to render OSMD since it only has web base support so injecting html is the only way
-          <WebView
-            ref={webviewRef}
-            originWhitelist={["*"]}
-            source={{ html: buildHtml(selectedXml) }}
-            onMessage={onMessage} // Call function when page inside this Webview calls postMessage
-            style={{ backgroundColor: "transparent", height: 400 }}
-          />
+          <></>
+          // // Otherwise use WebView component to render OSMD since it only has web base support so injecting html is the only way
+          // <WebView
+          //   ref={webviewRef}
+          //   originWhitelist={["*"]}
+          //   source={{ html: buildHtml(selectedXml) }}
+          //   onMessage={onMessage} // Call function when page inside this Webview calls postMessage
+          //   style={{ backgroundColor: "transparent", height: 400 }}
+          // />
         )}
 
         {/* <Text style={styles.text}>
