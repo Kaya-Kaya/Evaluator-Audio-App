@@ -4143,6 +4143,9 @@ const scoresData: Record<string, string> = {
 "air_on_the_g_string.musicxml" : `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
 <score-partwise version="4.0">
+<work>
+  <work-title>Air on the G String</work-title>
+</work>
   <identification>
     <encoding>
       <software>MuseScore 4.5.2</software>

@@ -36,11 +36,11 @@ export class ScoreFollower {
    */
   static async create(
     reference: string,
-    c = 10,
+    c = 50,
     maxRunCount = 3,
-    diagWeight = 0.4,
+    diagWeight = 0.75,
     sampleRate = 44100,
-    winLength = 8192
+    winLength = 4096
   ): Promise<ScoreFollower> {
     const params = {
       sr: sampleRate,
