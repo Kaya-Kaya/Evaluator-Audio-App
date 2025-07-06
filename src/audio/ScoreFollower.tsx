@@ -76,8 +76,8 @@ export class ScoreFollower {
    * @param frames Live audio frames
    * @returns Estimated position in the reference audio in seconds
    */
-  step(frames: number[]): number {
-    const chroma = this.getChroma(frames);
+  override_step(chroma: number[]): number {
+    // const chroma = this.getChroma(frames);
     const refIndex = this.otw.insert(chroma);
     this.path.push([refIndex, this.otw.live_index]);
     return (refIndex * this.winLength) / this.sampleRate;

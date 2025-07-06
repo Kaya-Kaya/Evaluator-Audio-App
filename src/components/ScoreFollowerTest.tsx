@@ -4,6 +4,8 @@ import { Audio, AVPlaybackStatus } from 'expo-av';
 import { decode } from 'wav-decoder';
 import { ScoreFollower } from '../audio/ScoreFollower';
 
+import { live_cens } from './py_CENS_live_ft'
+
 interface ScoreFollowerTestProps {
   score: string; // Selected score name
   dispatch: (action: { type: string; payload?: any }) => void; // Dispatch function used to update global state
@@ -13,7 +15,7 @@ interface ScoreFollowerTestProps {
 export default function ScoreFollowerTest({
   score,
   dispatch,
-  bpm = 100, // Default BPM if not provided in props
+  bpm = 300, // Default BPM if not provided in props
 }: ScoreFollowerTestProps) {
 
   const [processing, setProcessing] = useState(false); // Boolean for if score follower is running
@@ -41,8 +43,11 @@ export default function ScoreFollowerTest({
 
     try {
       const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-      const refUri = `/${base}/${bpm}bpm/instrument_0.wav`; // Path to reference wav file of selected score 
-      const liveUri = `/${base}/${bpm + 10}bpm/instrument_0.wav`; // Path to live/prerecorded wav file of selected score 
+      // const refUri = `/${base}/${bpm}bpm/instrument_0.wav`; // Path to reference wav file of selected score 
+      // const liveUri = `/${base}/${bpm + 10}bpm/instrument_0.wav`; // Path to live/prerecorded wav file of selected score 
+    
+      const refUri = `/${base}/baseline/instrument_0.wav`; // Path to reference wav file of selected score 
+      const liveUri = `/${base}/altered/instrument_0.wav`; // Path to live/prerecorded wav file of selected score 
 
       followerRef.current = await ScoreFollower.create(refUri); // Initialize score follower instance (default parameters from ScoreFollower.tsx)
       const follower = followerRef.current!;
@@ -64,24 +69,33 @@ export default function ScoreFollowerTest({
       pathRef.current = []; // Initialize alignment path reference 
 
       // Precompute full alignment path offline
+      let debug_live_cens = live_cens();
       for (let i = 0; i < totalFrames; i++) {
 
-        const start = i * frameSize; // Get starting frame 
-        let frame = audioData.subarray(start, start + frameSize); // Extract the audio frame from the buffer
+        // const start = i * frameSize; // Get starting frame 
+        // let frame = audioData.subarray(start, start + frameSize); // Extract the audio frame from the buffer
 
-        // Pad the frame if it's shorter than expected
-        if (frame.length < frameSize) {
-          const pad = new Float32Array(frameSize);
-          pad.set(frame);
-          frame = pad;
+        // // Pad the frame if it's shorter than expected
+        // if (frame.length < frameSize) {
+        //   const pad = new Float32Array(frameSize);
+        //   pad.set(frame);
+        //   frame = pad;
+        // }
+
+        let chroma: number[] = [];
+        console.log("Inputting vector #", i, " out of ", debug_live_cens[0].length);
+        for (let pitch = 0; pitch < debug_live_cens.length; pitch++) {
+          chroma[pitch] = debug_live_cens[pitch][i]
         }
-        follower.step(Array.from(frame)); // Pass frame into score follower's step function to populate path
+        console.log(chroma)
+
+        follower.override_step(chroma); // Pass frame into score follower's step function to populate path
         const last = follower.path[follower.path.length - 1]; // Get last updated frame from path
         pathRef.current.push(last); // Insert frame into our path reference 
       }
 
       // Show full path
-      console.log(pathRef.current)
+      // console.log(pathRef.current)
       
       const hopMs = (frameSize / sampleRate) * 1000; // Calculate the hop size in milliseconds based on frame size and sample rate
 
@@ -122,6 +136,8 @@ export default function ScoreFollowerTest({
         // Handle end of playback
         if (status.didJustFinish) {
           setProcessing(false); // Set processing boolean state to false (end of score follower run)
+          console.log('Full ref ft seq:', follower.otw.ref); // Print the full alignment path for 
+          console.log('Full live ft seq:', follower.otw.live); // Print the full alignment path for 
           console.log('Full alignment path:', follower.path); // Print the full alignment path for debugging/analysis
           soundRef.current?.setOnPlaybackStatusUpdate(null); // Remove the playback status listener
         }

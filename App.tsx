@@ -427,7 +427,7 @@ export default function App() {
             <ScoreFollowerTest
               score={state.score}
               dispatch={dispatch}
-              bpm={100}
+              bpm={300}
             />
             </Animated.View>
             
