@@ -50,7 +50,7 @@ export default function App() {
       sessionToken: null, // the session token for the API
       accompanimentSound: null, // the accompaniment sound
       synth_tempo: 100, // the tempo of the synthesized audio
-      tempo: 100, // the tempo in the tempo box (even if changed more recently)
+      tempo: null, // the tempo in the tempo box (even if changed more recently)
       score_tempo: 100, // the tempo in the musical score
       scores: [], // the list of scores to choose from
       referenceAudioUri: null as string | null, // reference to score's top voice audio
@@ -427,7 +427,7 @@ export default function App() {
             <ScoreFollowerTest
               score={state.score}
               dispatch={dispatch}
-              bpm={100}
+              bpm={state.tempo}
             />
             </Animated.View>
             

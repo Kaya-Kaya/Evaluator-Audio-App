@@ -19,15 +19,18 @@ export default function ScoreFollowerTest({
   const [processing, setProcessing] = useState(false); // Boolean for if score follower is running
   const [estimatedTime, setEstimatedTime] = useState(0); // Local state for storing estimated time
   const [estimatedBeat, setEstimatedBeat] = useState(0); // Local state for storing estimated beats
+  const [liveFile, setLiveFile] = useState<File | null>(null); // Local state for storing liveFile
 
   const soundRef = useRef<Audio.Sound | null>(null); // Reference to Audio Component
   const followerRef = useRef<ScoreFollower | null>(null); // Reference to score follower instance
   const audioDataRef = useRef<Float32Array>(new Float32Array()); // Reference to decoded audio sample data
   const lastFrameRef = useRef<number>(-1); // Reference to last frame that was processed
-  const pathRef = useRef<Array<[number, number]>>([]);
+  const pathRef = useRef<Array<[number, number]>>([]); // Reference to alignment path
+  const inputRef = useRef<HTMLInputElement>(null); // Reference to the file select HTML element 
 
   // Unload the sound when the component unmounts to free up memory
   useEffect(() => {
+    console.log(bpm)
     return () => {
       if (soundRef.current) {
         soundRef.current.unloadAsync().catch(() => {});
@@ -35,22 +38,31 @@ export default function ScoreFollowerTest({
     };
   }, []);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { // Web handle file change function
+    const file = e.target.files?.[0] ?? null;
+    setLiveFile(file && file.name.toLowerCase().endsWith('.wav') ? file : null);
+  };
+
   const runFollower = async () => {
     if (!score) return; // Do nothing if no score is selected 
     setProcessing(true); // Turn on processing boolean state
 
     try {
       const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
+      // const refUri = `/${base}/${bpm}bpm/instrument_0.wav`; // Path to reference wav file of selected score 
+      // const liveUri = `/${base}/${bpm + 10}bpm/instrument_0.wav`; // Path to live/prerecorded wav file of selected score 
       const refUri = `/${base}/${bpm}bpm/instrument_0.wav`; // Path to reference wav file of selected score 
-      const liveUri = `/${base}/${bpm + 10}bpm/instrument_0.wav`; // Path to live/prerecorded wav file of selected score 
+      //const liveUri = `/${base}/altered/instrument_0.wav`; // Path to live/prerecorded wav file of selected score 
 
       followerRef.current = await ScoreFollower.create(refUri); // Initialize score follower instance (default parameters from ScoreFollower.tsx)
       const follower = followerRef.current!;
       const { sampleRate, winLength } = follower; // Extract sample rate and window length from the ScoreFollower instance
       const frameSize = winLength; // Set framesize to window length property of scorefollower
-      const resp = await fetch(liveUri); // Fetch the live WAV audio file from the specified URI
-      if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`); // Throw an error if the response is not successful
-      const buffer = await resp.arrayBuffer(); // Read the response as an ArrayBuffer (binary data)
+
+      //const resp = await fetch(liveUri); // Fetch the live WAV audio file from the specified URI
+      //if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`); // Throw an error if the response is not successful
+      const buffer = await liveFile.arrayBuffer(); // Read the response as an ArrayBuffer (binary data)
+      
       const decoded = await decode(buffer); // Decode the WAV buffer into PCM audio data
       const ch0 = decoded.channelData[0]; // Extract the first audio channel (mono)
       const audioData = ch0 instanceof Float32Array ? ch0 : Float32Array.from(ch0); // Ensure the data is a Float32Array
@@ -127,9 +139,11 @@ export default function ScoreFollowerTest({
         }
       };
 
+      const liveUrl = URL.createObjectURL(liveFile); // Extract url from liveFile state 
+
       // Create and load the sound object from the live audio URI
       const { sound } = await Audio.Sound.createAsync(
-        { uri: liveUri }, // Audio source
+        { uri: liveUrl }, // Audio source
         {
           shouldPlay: true, // Automatically start playback once loaded
           progressUpdateIntervalMillis: Math.floor(hopMs), // Set how often status updates are triggered (aligned to frame hop size)
@@ -146,13 +160,41 @@ export default function ScoreFollowerTest({
 
   return (
     <View style={styles.container}>
+      {bpm ? (
+        <Text style={styles.tempoText}>Reference Tempo: {bpm} BPM</Text>
+      ):
+      (
+        <></>
+      )
+      }
+      {/* Web file picker - hidden for styling purposes*/}
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".wav"
+        style={styles.hiddenInput}
+        disabled={processing}
+        onChange={handleFileChange}
+      />
+
+      {/* Visable web file picker - actual button shown*/}
       <TouchableOpacity
-        style={[styles.button, processing && styles.disabledButton]}
-        onPress={runFollower}
+        style={[styles.fileButton, processing && styles.disabledButton]}
+        onPress={() => inputRef.current?.click()}
         disabled={processing}
       >
         <Text style={styles.buttonText}>
-          {processing ? 'Running...' : 'Run Score Follower'}
+          {liveFile ? `Selected: ${liveFile.name}` : 'Upload a Performance'} 
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, (processing || !liveFile) && styles.disabledButton]}
+        onPress={runFollower}
+        disabled={processing || !liveFile}
+      >
+        <Text style={styles.buttonText}>
+          {processing ? 'Running...' : 'Play'}
         </Text>
       </TouchableOpacity>
 
@@ -166,7 +208,9 @@ export default function ScoreFollowerTest({
 }
 
 const styles = StyleSheet.create({
-  container: { marginVertical: 12, padding: 10 },
+  container: { 
+    marginVertical: 12
+  },
   button: {
     padding: 12,
     backgroundColor: '#2C3E50',
@@ -188,4 +232,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  tempoText: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'left',
+    marginBottom: 8,
+  },
+   hiddenInput: {
+    display: 'none',
+  },
+  fileButton: {
+    padding: 12,
+    backgroundColor: '#2C3E50',
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+
 });

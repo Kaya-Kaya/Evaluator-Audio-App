@@ -167,14 +167,24 @@ export default function ScoreDisplay({
         const num = len.Numerator === 0 ? 1 : len.Numerator;
         delta = (num / len.Denominator) * denom;
       }else {
-      console.log("No note under cursor.");
-    }
+        console.log("No note under cursor.");
+      }
+
+      // if (delta + moved > targetBeats) {
+      //   // Move the cursor to the next note
+      //   cursorRef.current!.previous();
+      //   cursorRef.current!.update();
+      //   osdRef.current!.render(); // Re-render the music sheet
+
+      //   console.log("delta: ", delta)
+      //   console.log("moved: ", moved)
+      //   console.log("target beat: ", targetBeats)
+      //   return
+      // }
 
       moved += delta; // Accumulate the moved beats
       movedBeats.current = moved; // Update state to reflect progress
 
-      // cursorRef.current!.updateCurrentPage();
-      // just re-position the cursor DOM element:
       cursorRef.current!.update();
 
       // osdRef.current!.render(); // Re-render to reflect the cursor's new position
@@ -272,7 +282,7 @@ export default function ScoreDisplay({
         console.error("Score content not found for:", state.score);
         return;
       }
-
+      const tempo = extractTempo(xmlContent); // Extract tempo from selected score (via musicxml)
       // Load and render the XML content.
       osm
         .load(xmlContent)
@@ -295,7 +305,7 @@ export default function ScoreDisplay({
             type: "update_piece_info",
             time_signature:
               cursorRef.current.Iterator.CurrentMeasure.ActiveTimeSignature,
-            tempo: 100,
+            tempo: tempo,
           });
         })
         .catch((error) => {
@@ -377,6 +387,28 @@ export default function ScoreDisplay({
     scrollPositionRef.current = yOffset; // update ref immediately
   };
 
+  const extractTempo = (xml: string): number | null => {
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xml, "application/xml");
+
+      const sound = xmlDoc.querySelector("sound[tempo]");
+      if (sound?.getAttribute("tempo")) {
+        return parseFloat(sound.getAttribute("tempo")!);
+      }
+
+      const perMin = xmlDoc.querySelector("metronome > per-minute");
+      if (perMin?.textContent) {
+        return parseFloat(perMin.textContent);
+      }
+
+      return null;
+    } catch (error) {
+      console.warn("Failed to extract tempo from XML:", error);
+      return null;
+    }
+};
+
   /////////////////////////////////////////////////////////////////////////////////
   // useEffect to tie the cursor position to the state
   /////////////////////////////////////////////////////////////////////////////////
@@ -430,7 +462,7 @@ export default function ScoreDisplay({
   return (
     <>
       {/* Temporary inputs for testing cursor movement */}
-      {/* <TextInput
+      <TextInput
         value={steps}
         onChangeText={setSteps}
         keyboardType="numeric"
@@ -447,7 +479,7 @@ export default function ScoreDisplay({
       onPress={moveCursorByBeats}
       >
         <Text>Start</Text>
-      </TouchableOpacity> */}
+      </TouchableOpacity>
 
       {/* Reference ScrollView Component for controlling scroll */}
       <ScrollView
