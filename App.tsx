@@ -363,8 +363,15 @@ export default function App() {
       <SafeAreaView > 
         {/* Header with image */}
         <Animated.View style={[styles.menu_bar, {backgroundColor: '#2C3E50', height: isSmallScreen? 40: 80}, { position: 'relative', top: 0 }]}>
-          <Image source={require('./assets/companion.png')} style={[styles.logo, {height: isSmallScreen? 30: 100, width: isSmallScreen? 100: 200}]}/>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <Text
+          style={[
+            styles.logoText,
+            { fontSize: isSmallScreen ? 18 : 32 },
+          ]}
+        >
+          Evaluator
+        </Text>          
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <TouchableOpacity onPress={() => setStarted(!started)}>
               <FontAwesome
                 name={started ? 'microphone' : 'microphone-slash'}
@@ -580,6 +587,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#FFFFFF",
     fontWeight: "bold",
+  },
+  logoText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
   },
 });
 
