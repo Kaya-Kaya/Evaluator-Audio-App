@@ -3,11 +3,14 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import { decode } from 'wav-decoder';
 import { ScoreFollower } from '../audio/ScoreFollower';
+import { CENSFeatures } from '../audio/FeaturesCENS';
+import { FeaturesConstructor } from '../audio/Features';
 
 interface ScoreFollowerTestProps {
   score: string; // Selected score name
   dispatch: (action: { type: string; payload?: any }) => void; // Dispatch function used to update global state
-  bpm?: number; // Optional BPM number
+  bpm?: number; // Optional BPM number,
+  FeaturesCls?: FeaturesConstructor<any>;
 }
 
 interface CSVRow { // Interface used to store CSV info 
@@ -21,8 +24,8 @@ export default function ScoreFollowerTest({
   score,
   dispatch,
   bpm = 100, // Default BPM if not provided in props
+  FeaturesCls = CENSFeatures,
 }: ScoreFollowerTestProps) {
-
   const [processing, setProcessing] = useState(false); // Boolean for if score follower is running
   const [liveFile, setLiveFile] = useState<File | null>(null); // Local state for storing liveFile
   const nextIndexRef = useRef<number>(0);  // Track next CSV index to dispatch
@@ -119,9 +122,13 @@ export default function ScoreFollowerTest({
     try {
       const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
       const refUri = `/${base}/baseline/instrument_0.wav`; // Path to reference wav file of selected score 
-      followerRef.current = await ScoreFollower.create(refUri); // Initialize score follower instance (default parameters from ScoreFollower.tsx)
+      followerRef.current = await ScoreFollower.create(refUri, FeaturesCls); // Initialize score follower instance (default parameters from ScoreFollower.tsx)
       const follower = followerRef.current!; 
-      const { sampleRate, winLength } = follower; // Extract sample rate and window length from the ScoreFollower instance
+
+      // Extract sample rate and window length from the ScoreFollower instance
+      const sampleRate = follower.sr;
+      const winLength = follower.winLen 
+
       const frameSize = winLength; // Set framesize to window length property of scorefollower
       frameSecRef.current = frameSize / sampleRate; 
       const buffer = await liveFile.arrayBuffer(); // Read the response as an ArrayBuffer (binary data)
