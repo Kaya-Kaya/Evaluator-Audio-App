@@ -132,6 +132,7 @@ export default function ScoreDisplay({
       }
     }
     movedBeats.current = initialBeats;
+    console.log("movedBeats :", movedBeats)
 
     // Calculate how many beats we need to move forward
     const toMove = Math.max(0, targetBeats);
@@ -139,15 +140,42 @@ export default function ScoreDisplay({
     // Initialize moved beats from React state (current beat position)
     let moved = movedBeats.current + overshootBeats.current;
     overshootBeats.current = 0;
+    console.log("movedBeats + overshootBeats :", moved)
 
     // Recursive function to advance the cursor step-by-step
     const stepFn = () => {
 
+      // get beat value of next note 
+      cursorRef.current!.next();
+      let cur = cursorRef.current!.VoicesUnderCursor(
+        osdRef.current!.Sheet.Instruments[0]
+      );
+      let delta = 0;
+      if (cur.length && cur[0].Notes.length) {
+        const len = cur[0].Notes[0].Length as Fraction;
+        const num = len.Numerator === 0 ? 1 : len.Numerator;
+        delta = (num / len.Denominator) * denom;
+      }else {
+        console.log("No note under cursor.");
+      }
+      cursorRef.current!.previous(); 
+
+      if (moved < toMove && toMove < moved + delta){
+        console.log("======================================")
+        console.log("moved :", moved)
+        console.log("tar :", toMove)
+        console.log("next:", moved + delta)
+        console.log("======================================")
+      }
+
+
       // Stop if we've moved enough beats
       if (moved >= toMove) {
+        console.log("moved:" ,moved, ">", toMove) 
         const leftover = moved - toMove
         overshootBeats.current = leftover;
         movedBeats.current = toMove;
+        console.log("leftover: ", leftover)
         osdRef.current!.render(); // Re-render the music sheet
         return;
       }
@@ -156,11 +184,11 @@ export default function ScoreDisplay({
       cursorRef.current!.next();
 
       // Get the new note under the cursor
-      const cur = cursorRef.current!.VoicesUnderCursor(
+      cur = cursorRef.current!.VoicesUnderCursor(
         osdRef.current!.Sheet.Instruments[0]
       );
 
-      let delta = 0;
+      delta = 0;
       // If there's a note, compute how many beats it represents
       if (cur.length && cur[0].Notes.length) {
         const len = cur[0].Notes[0].Length as Fraction;
@@ -185,10 +213,7 @@ export default function ScoreDisplay({
       moved += delta; // Accumulate the moved beats
       movedBeats.current = moved; // Update state to reflect progress
 
-      cursorRef.current!.update();
-
-      // osdRef.current!.render(); // Re-render to reflect the cursor's new position
-
+      osdRef.current!.render(); // Re-render to reflect the cursor's new position
       animRef.current = requestAnimationFrame(stepFn); // Schedule a new animation frame and store its ID (better alternative to setTimeout)
     };
     stepFn(); // Start the step loop
@@ -462,7 +487,7 @@ export default function ScoreDisplay({
   return (
     <>
       {/* Temporary inputs for testing cursor movement */}
-      <TextInput
+      {/* <TextInput
         value={steps}
         onChangeText={setSteps}
         keyboardType="numeric"
@@ -479,7 +504,7 @@ export default function ScoreDisplay({
       onPress={moveCursorByBeats}
       >
         <Text>Start</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* Reference ScrollView Component for controlling scroll */}
       <ScrollView
