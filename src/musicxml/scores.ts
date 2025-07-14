@@ -6279,7 +6279,7 @@ const scoresData: Record<string, string> = {
         <direction-type>
           <metronome parentheses="no" default-x="-37.68" relative-y="20">
             <beat-unit>quarter</beat-unit>
-            <per-minute>100</per-minute>
+            <per-minute>300</per-minute>
             </metronome>
           </direction-type>
         <sound tempo="300"/>
@@ -7166,7 +7166,7 @@ const scoresData: Record<string, string> = {
             <per-minute>200</per-minute>
             </metronome>
           </direction-type>
-        <sound tempo="240"/>
+        <sound tempo="200"/>
         </direction>
       <note default-x="0" default-y="0">
         <rest measure="yes"/>

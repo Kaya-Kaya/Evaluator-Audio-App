@@ -50,7 +50,7 @@ export default function App() {
       sessionToken: null, // the session token for the API
       accompanimentSound: null, // the accompaniment sound
       synth_tempo: 100, // the tempo of the synthesized audio
-      tempo: 100, // the tempo in the tempo box (even if changed more recently)
+      tempo: null, // the tempo in the tempo box (even if changed more recently)
       score_tempo: 100, // the tempo in the musical score
       scores: [], // the list of scores to choose from
       referenceAudioUri: null as string | null, // reference to score's top voice audio
@@ -363,8 +363,15 @@ export default function App() {
       <SafeAreaView > 
         {/* Header with image */}
         <Animated.View style={[styles.menu_bar, {backgroundColor: '#2C3E50', height: isSmallScreen? 40: 80}, { position: 'relative', top: 0 }]}>
-          <Image source={require('./assets/companion.png')} style={[styles.logo, {height: isSmallScreen? 30: 100, width: isSmallScreen? 100: 200}]}/>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <Text
+          style={[
+            styles.logoText,
+            { fontSize: isSmallScreen ? 18 : 32 },
+          ]}
+        >
+          Evaluator
+        </Text>          
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <TouchableOpacity onPress={() => setStarted(!started)}>
               <FontAwesome
                 name={started ? 'microphone' : 'microphone-slash'}
@@ -427,6 +434,7 @@ export default function App() {
             <ScoreFollowerTest
               score={state.score}
               dispatch={dispatch}
+              bpm={state.tempo}
             />
             </Animated.View>
             
@@ -579,6 +587,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#FFFFFF",
     fontWeight: "bold",
+  },
+  logoText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
   },
 });
 
