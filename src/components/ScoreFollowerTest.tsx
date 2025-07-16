@@ -5,6 +5,7 @@ import { decode } from 'wav-decoder';
 import { ScoreFollower } from '../audio/ScoreFollower';
 import { CENSFeatures } from '../audio/FeaturesCENS';
 import { FeaturesConstructor } from '../audio/Features';
+import waveResampler from 'wave-resampler';
 
 interface ScoreFollowerTestProps {
   score: string; // Selected score name
@@ -132,11 +133,40 @@ export default function ScoreFollowerTest({
       const frameSize = winLength; // Set framesize to window length property of scorefollower
       frameSecRef.current = frameSize / sampleRate; 
       const buffer = await liveFile.arrayBuffer(); // Read the response as an ArrayBuffer (binary data)
-      
-      const decoded = await decode(buffer); // Decode the WAV buffer into PCM audio data
-      const ch0 = decoded.channelData[0]; // Extract the first audio channel (mono)
-      const audioData = ch0 instanceof Float32Array ? ch0 : Float32Array.from(ch0); // Ensure the data is a Float32Array
-      audioDataRef.current = audioData; // Store the decoded audio data in a ref for frame-by-frame access
+      const result = await decode(buffer, { symmetric: true }); // Decode the WAV buffer into PCM audio data  - passed in symmetric = TRUE for better PCM samples when compared to the Python version
+
+      let audioData = result.channelData[0]
+
+      // Convert to mono if needed
+      if (result.channelData.length > 1) {
+          const numCh = result.channelData.length;
+          const len = audioData.length;
+          const mono = new Float32Array(len);
+          for (let i = 0; i < len; i++) {
+              let sum = 0;
+              for (let ch = 0; ch < numCh; ch++) sum += result.channelData[ch][i];
+              mono[i] = sum / numCh;
+          }
+          audioData = mono;
+      }
+
+      // Resample if sample rates differ
+      if (result.sampleRate !== sampleRate) {
+          const resampled = waveResampler.resample(
+              audioData,
+              result.sampleRate,
+              sampleRate
+          );
+          audioData =
+              resampled instanceof Float32Array
+                  ? resampled
+                  : Float32Array.from(resampled as number[]);
+      }
+
+      audioDataRef.current = audioData;
+
+       // downloadFullPCM(audioDataRef.current)
+
       const totalFrames = Math.ceil(audioData.length / frameSize); // Compute total frames for computing alignment path 
       pathRef.current = []; // Initialize alignment path reference 
 
@@ -159,7 +189,7 @@ export default function ScoreFollowerTest({
 
       {
         const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-        const csvUri = `/${base}/altered/ode_to_joy_300bpm_NEW.csv`; // Path the CSV given score name
+        const csvUri = `/${base}/baseline/ode_to_joy_300bpm_NEW.csv`; // Path the CSV given score name
         const text = await fetch(csvUri).then(r => r.text()); // Fetch the CSV file and read its text
         const lines = text.trim().split('\n'); // Split the CSV into lines (one line per row)
 
@@ -193,6 +223,7 @@ export default function ScoreFollowerTest({
       }
       // Show full path
       console.log(pathRef.current)
+      // return
       
        
       const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => { // Callback to handle audio playback status updates
@@ -204,7 +235,6 @@ export default function ScoreFollowerTest({
           currentTimeSec >= csvDataRef.current[nextIndexRef.current].predictedTime
         ) {
           const beat = csvDataRef.current[nextIndexRef.current].beat; // Get beat of that note
-          console.log('dispatching beat', beat);
           dispatch({ type: 'SET_ESTIMATED_BEAT', payload: beat }); // Update beat to move cursor
           nextIndexRef.current++; // Go to next row of csv 
         }
@@ -223,7 +253,7 @@ export default function ScoreFollowerTest({
         { uri: liveUrl }, // Audio source
         {
           shouldPlay: true, // Automatically start playback once loaded
-          progressUpdateIntervalMillis: 50, // Set how often status updates are triggered 
+          progressUpdateIntervalMillis: 20, // Set how often status updates are triggered 
         },
         onPlaybackStatusUpdate // Callback to handle playback progress (frame processing, alignment, etc.)
       );
@@ -234,6 +264,59 @@ export default function ScoreFollowerTest({
       setProcessing(false);
     }
   };
+
+  function downloadFullPCM(audioData, filename = 'ts_first100_pcm.txt') {
+    // 1) Grab the first 100 samples (300 since your SAMPLE_RATE is 3× the frame-count)
+    const slice100 = audioData.slice(0, 1000);
+
+    // 2) Format like Python does
+    const text = Array.from(slice100)
+      .map(pythonFormat)
+      .join('\n');
+
+    // 3) Trigger download in browser
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function pythonFormat(v) {
+    // Python prints "0.0" for zero
+    if (Object.is(v, 0)) return '0.0';
+
+    const absV = Math.abs(v);
+    const expVal = Math.floor(Math.log10(absV));
+
+    // Python repr/str uses exponential for exp < -4 or exp >= 17
+    if (expVal < -4 || expVal >= 17) {
+      // Generate a long exponential, then strip unneeded zeros
+      let [mant, exp] = v.toExponential(16).split('e');
+
+      // Trim trailing zeros from mantissa, then any stray dot
+      mant = mant.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.$/, '');
+
+      // Normalize exponent sign and pad to 2 digits
+      let sign = exp[0];
+      let digits = exp.slice(1);
+      if (sign !== '+' && sign !== '-') {
+        // unlikely, but just in case
+        digits = sign + digits;
+        sign = '+';
+      }
+      if (digits.length < 2) digits = '0' + digits;
+
+      return mant + 'e' + sign + digits;
+    } else {
+      // Fixed decimal: JS’s toString gives the shortest fixed repr for 1e‑4 ≤ |v| < 1e17
+      return v.toString();
+    }
+  }
 
   return (
     <View style={styles.container}>
