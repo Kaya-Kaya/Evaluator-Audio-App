@@ -6,6 +6,7 @@ import { ScoreFollower } from '../audio/ScoreFollower';
 import { CENSFeatures } from '../audio/FeaturesCENS';
 import { FeaturesConstructor } from '../audio/Features';
 import waveResampler from 'wave-resampler';
+import { Platform } from 'react-native';
 
 interface ScoreFollowerTestProps {
   score: string; // Selected score name
@@ -328,7 +329,17 @@ export default function ScoreFollowerTest({
       )
       }
       {/* Web file picker - hidden for styling purposes*/}
-      <input
+      {/* <input
+        ref={inputRef}
+        type="file"
+        accept=".wav"
+        style={styles.hiddenInput}
+        disabled={processing}
+        onChange={handleFileChange}
+      /> */}
+
+      {Platform.OS === 'web' &&
+        <input
         ref={inputRef}
         type="file"
         accept=".wav"
@@ -336,6 +347,7 @@ export default function ScoreFollowerTest({
         disabled={processing}
         onChange={handleFileChange}
       />
+      }
 
       {/* Visable web file picker - actual button shown*/}
       <TouchableOpacity

@@ -163,6 +163,14 @@ const playReferenceAudio = async () => {
     }
   };
   
+const WebFileInput = () => {
+  return React.createElement('input', {
+    type: 'file',
+    accept: '.musicxml',
+    onChange: noteFileUpload,
+    style: { color: '#000' },
+  });
+};
 
   return (
     <View>
@@ -210,7 +218,7 @@ const playReferenceAudio = async () => {
         {/* If on browser render upload field for web*/}
         {Platform.OS === 'web' ? 
         (
-          <input type="file" accept=".musicxml" onChange={noteFileUpload} style={{ color: '#000' }} />
+          <WebFileInput />
         ) : 
         (
           // Else render upload field for mobile
