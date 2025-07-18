@@ -265,58 +265,58 @@ export default function ScoreFollowerTest({
     }
   };
 
-  function downloadFullPCM(audioData, filename = 'ts_first100_pcm.txt') {
-    // 1) Grab the first 100 samples (300 since your SAMPLE_RATE is 3× the frame-count)
-    const slice100 = audioData.slice(0, 1000);
+  // function downloadFullPCM(audioData, filename = 'ts_first100_pcm.txt') {
+  //   // 1) Grab the first 100 samples (300 since your SAMPLE_RATE is 3× the frame-count)
+  //   const slice100 = audioData.slice(0, 1000);
 
-    // 2) Format like Python does
-    const text = Array.from(slice100)
-      .map(pythonFormat)
-      .join('\n');
+  //   // 2) Format like Python does
+  //   const text = Array.from(slice100)
+  //     .map(pythonFormat)
+  //     .join('\n');
 
-    // 3) Trigger download in browser
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
+  //   // 3) Trigger download in browser
+  //   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  //   const url = URL.createObjectURL(blob);
+  //   const a = document.createElement('a');
+  //   a.href = url;
+  //   a.download = filename;
+  //   document.body.appendChild(a);
+  //   a.click();
+  //   document.body.removeChild(a);
+  //   URL.revokeObjectURL(url);
+  // }
 
-  function pythonFormat(v) {
-    // Python prints "0.0" for zero
-    if (Object.is(v, 0)) return '0.0';
+  // function pythonFormat(v) {
+  //   // Python prints "0.0" for zero
+  //   if (Object.is(v, 0)) return '0.0';
 
-    const absV = Math.abs(v);
-    const expVal = Math.floor(Math.log10(absV));
+  //   const absV = Math.abs(v);
+  //   const expVal = Math.floor(Math.log10(absV));
 
-    // Python repr/str uses exponential for exp < -4 or exp >= 17
-    if (expVal < -4 || expVal >= 17) {
-      // Generate a long exponential, then strip unneeded zeros
-      let [mant, exp] = v.toExponential(16).split('e');
+  //   // Python repr/str uses exponential for exp < -4 or exp >= 17
+  //   if (expVal < -4 || expVal >= 17) {
+  //     // Generate a long exponential, then strip unneeded zeros
+  //     let [mant, exp] = v.toExponential(16).split('e');
 
-      // Trim trailing zeros from mantissa, then any stray dot
-      mant = mant.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.$/, '');
+  //     // Trim trailing zeros from mantissa, then any stray dot
+  //     mant = mant.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.$/, '');
 
-      // Normalize exponent sign and pad to 2 digits
-      let sign = exp[0];
-      let digits = exp.slice(1);
-      if (sign !== '+' && sign !== '-') {
-        // unlikely, but just in case
-        digits = sign + digits;
-        sign = '+';
-      }
-      if (digits.length < 2) digits = '0' + digits;
+  //     // Normalize exponent sign and pad to 2 digits
+  //     let sign = exp[0];
+  //     let digits = exp.slice(1);
+  //     if (sign !== '+' && sign !== '-') {
+  //       // unlikely, but just in case
+  //       digits = sign + digits;
+  //       sign = '+';
+  //     }
+  //     if (digits.length < 2) digits = '0' + digits;
 
-      return mant + 'e' + sign + digits;
-    } else {
-      // Fixed decimal: JS’s toString gives the shortest fixed repr for 1e‑4 ≤ |v| < 1e17
-      return v.toString();
-    }
-  }
+  //     return mant + 'e' + sign + digits;
+  //   } else {
+  //     // Fixed decimal: JS’s toString gives the shortest fixed repr for 1e‑4 ≤ |v| < 1e17
+  //     return v.toString();
+  //   }
+  // }
 
   return (
     <View style={styles.container}>
