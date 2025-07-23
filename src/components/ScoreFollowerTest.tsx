@@ -123,7 +123,7 @@ export default function ScoreFollowerTest({
 
     try {
       const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-      const refUri = `/${base}/baseline/instrument_0.wav`; // Path to reference wav file of selected score 
+      const refUri = `/${base}/baseline/aotgs_solo_ref.wav`; // Path to reference wav file of selected score 
       followerRef.current = await ScoreFollower.create(refUri, FeaturesCls); // Initialize score follower instance (default parameters from ScoreFollower.tsx)
       const follower = followerRef.current!; 
 
@@ -190,7 +190,7 @@ export default function ScoreFollowerTest({
 
       {
         const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-        const csvUri = `/${base}/baseline/ode_to_joy_300bpm_NEW.csv`; // Path the CSV given score name
+        const csvUri = `/${base}/baseline/aotgs_tempo.csv`; // Path the CSV given score name
         const text = await fetch(csvUri).then(r => r.text()); // Fetch the CSV file and read its text
         const lines = text.trim().split('\n'); // Split the CSV into lines (one line per row)
 
