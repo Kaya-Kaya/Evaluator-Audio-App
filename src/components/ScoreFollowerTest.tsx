@@ -7,6 +7,19 @@ import { CENSFeatures } from '../audio/FeaturesCENS';
 import { FeaturesConstructor } from '../audio/Features';
 import waveResampler from 'wave-resampler';
 import { Platform } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import { Asset } from 'expo-asset';
+
+// Hash map - score name -> score's wav file (expo implementation using require)
+const refAssetMap: Record<string, any> = {
+  'air_on_the_g_string': require('../../assets/air_on_the_g_string/baseline/aotgs_solo_ref.wav'),
+};
+
+// Hash map - score name -> score's csv file (expo implementation using require)
+const csvAssetMap: Record<string, any> = {
+  'air_on_the_g_string': require('../../assets/air_on_the_g_string/baseline/aotgs_tempo.csv'),
+};
 
 interface ScoreFollowerTestProps {
   score: string; // Selected score name
@@ -29,7 +42,7 @@ export default function ScoreFollowerTest({
   FeaturesCls = CENSFeatures,
 }: ScoreFollowerTestProps) {
   const [processing, setProcessing] = useState(false); // Boolean for if score follower is running
-  const [liveFile, setLiveFile] = useState<File | null>(null); // Local state for storing liveFile
+  const [liveFile, setLiveFile] = useState<{ uri: string; name: string } | null>(null);
   const nextIndexRef = useRef<number>(0);  // Track next CSV index to dispatch
 
   const soundRef = useRef<Audio.Sound | null>(null); // Reference to Audio Component
@@ -50,9 +63,30 @@ export default function ScoreFollowerTest({
     };
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { // Web handle file change function
+  // Web versin of wav file upload 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { 
     const file = e.target.files?.[0] ?? null;
-    setLiveFile(file && file.name.toLowerCase().endsWith('.wav') ? file : null);
+    if (file && file.name.toLowerCase().endsWith('.wav')) {
+      const uri = URL.createObjectURL(file);
+      setLiveFile({ uri, name: file.name });
+    } else {
+      setLiveFile(null);
+    }
+  };
+
+  // Mobile version of wav file upload usign DocumentPicker
+  const handleMobileFileChange = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({ type: 'audio/wav', copyToCacheDirectory: true });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const asset = res.assets[0];
+        setLiveFile({ uri: asset.uri, name: asset.name });
+      } else {
+        setLiveFile(null);
+      }
+    } catch (err) {
+      console.error('DocumentPicker Error:', err);
+    }
   };
 
   // Given warped path and an array of timestamps of when each note is played in the reference audio, it will return array of ESTIMATED timestamps of when each note is played in the live audio
@@ -123,7 +157,8 @@ export default function ScoreFollowerTest({
 
     try {
       const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-      const refUri = `/${base}/baseline/aotgs_solo_ref.wav`; // Path to reference wav file of selected score 
+      const isWeb = Platform.OS === 'web'; // Boolean indicating if user is on website version or not
+      const refUri = isWeb ? `/${base}/baseline/aotgs_solo_ref.wav` : Asset.fromModule(refAssetMap[base]).uri; // Path to reference wav file of selected score depending on web or expo go version
       followerRef.current = await ScoreFollower.create(refUri, FeaturesCls); // Initialize score follower instance (default parameters from ScoreFollower.tsx)
       const follower = followerRef.current!; 
 
@@ -133,7 +168,19 @@ export default function ScoreFollowerTest({
 
       const frameSize = winLength; // Set framesize to window length property of scorefollower
       frameSecRef.current = frameSize / sampleRate; 
-      const buffer = await liveFile.arrayBuffer(); // Read the response as an ArrayBuffer (binary data)
+
+      let buffer: ArrayBuffer; // Define an array buffer
+
+      if (isWeb) {
+        buffer = await fetch(liveFile.uri).then(r => r.arrayBuffer()); // Web version of initializing array buffer given live uri 
+      }
+       else {  // Expo go version of initializing array buffer given live uri 
+        const b64 = await FileSystem.readAsStringAsync(liveFile.uri, { encoding: FileSystem.EncodingType.Base64 });
+        const binaryString = atob(b64);
+        const bytes = Uint8Array.from(binaryString, c => c.charCodeAt(0));
+        buffer = bytes.buffer;
+      }
+
       const result = await decode(buffer, { symmetric: true }); // Decode the WAV buffer into PCM audio data  - passed in symmetric = TRUE for better PCM samples when compared to the Python version
 
       let audioData = result.channelData[0]
@@ -190,10 +237,9 @@ export default function ScoreFollowerTest({
 
       {
         const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-        const csvUri = `/${base}/baseline/aotgs_tempo.csv`; // Path the CSV given score name
-        const text = await fetch(csvUri).then(r => r.text()); // Fetch the CSV file and read its text
+        const csvUri = isWeb ? `/${base}/baseline/aotgs_tempo.csv` : Asset.fromModule(csvAssetMap[base]).uri; // Path the CSV given score name (web and alternative expo go version)
+        const text = isWeb ? await fetch(csvUri).then(r => r.text()) : await FileSystem.readAsStringAsync(csvUri, { encoding: FileSystem.EncodingType.UTF8 }); // fetch the CSV text
         const lines = text.trim().split('\n'); // Split the CSV into lines (one line per row)
-
 
         const rows: CSVRow[] = lines.slice(1).map(line => { // Parse each data row (skipping the header at index 0)
           const cols = line.split(','); // Split a single CSV line into its comma-separated columns
@@ -247,11 +293,11 @@ export default function ScoreFollowerTest({
         }
       };
 
-      const liveUrl = URL.createObjectURL(liveFile); // Extract url from liveFile state 
+      const soundSource = { uri: liveFile.uri };
 
       // Create and load the sound object from the live audio URI
       const { sound } = await Audio.Sound.createAsync(
-        { uri: liveUrl }, // Audio source
+        soundSource, // Audio source
         {
           shouldPlay: true, // Automatically start playback once loaded
           progressUpdateIntervalMillis: 20, // Set how often status updates are triggered 
@@ -259,6 +305,7 @@ export default function ScoreFollowerTest({
         onPlaybackStatusUpdate // Callback to handle playback progress (frame processing, alignment, etc.)
       );
       soundRef.current = sound;
+      
 
     } catch (err) {
       console.error('ScoreFollower Error:', err);
@@ -338,27 +385,41 @@ export default function ScoreFollowerTest({
         onChange={handleFileChange}
       /> */}
 
-      {Platform.OS === 'web' &&
-        <input
-        ref={inputRef}
-        type="file"
-        accept=".wav"
-        style={styles.hiddenInput}
-        disabled={processing}
-        onChange={handleFileChange}
-      />
-      }
-
-      {/* Visable web file picker - actual button shown*/}
-      <TouchableOpacity
-        style={[styles.fileButton, processing && styles.disabledButton]}
-        onPress={() => inputRef.current?.click()}
-        disabled={processing}
-      >
-        <Text style={styles.buttonText}>
-          {liveFile ? `Selected: ${liveFile.name}` : 'Upload a Performance'} 
-        </Text>
-      </TouchableOpacity>
+      {/* Render wav upload button for web version */}
+      {Platform.OS === 'web' ? (
+        <>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".wav"
+            style={styles.hiddenInput}
+            disabled={processing}
+            onChange={handleFileChange}
+          />
+          {/* Visable web file picker - actual button shown*/}
+          <TouchableOpacity
+            style={[styles.fileButton, processing && styles.disabledButton]}
+            onPress={() => inputRef.current?.click()}
+            disabled={processing}
+          >
+            <Text style={styles.buttonText}>
+              {liveFile ? `Selected: ${liveFile.name}` : 'Upload a Performance'} 
+            </Text>
+          </TouchableOpacity>
+        </>
+        
+      ): ( 
+        // Render wav upload button for expo go version 
+        <TouchableOpacity
+          style={[styles.fileButton, processing && styles.disabledButton]}
+          onPress={handleMobileFileChange}
+          disabled={processing}
+        >
+          <Text style={styles.buttonText}>
+            {liveFile ? `Selected: ${liveFile.name}` : 'Select WAV File'}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity
         style={[styles.button, (processing || !liveFile) && styles.disabledButton]}
