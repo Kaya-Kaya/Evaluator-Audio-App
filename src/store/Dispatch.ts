@@ -62,6 +62,7 @@ const reducer_function = (state: any, action: any) => {
           time_signature: action.time_signature,
           score_tempo: action.tempo as number,
           tempo: action.tempo as number,
+          beatsPerMeasure: action.beatsPerMeasure,
         },
       };
     case "new_session":

@@ -324,13 +324,14 @@ export default function ScoreDisplay({
           if (isSmallScreen) {
             osdRef.current!.zoom = .45
           }
-
+          //console.log("tar:", cursorRef.current.Iterator.CurrentMeasure.ActiveTimeSignature)
           // TODO!  Find the piece's tempo and send that instead of constant 100
           dispatch({
             type: "update_piece_info",
             time_signature:
               cursorRef.current.Iterator.CurrentMeasure.ActiveTimeSignature,
             tempo: tempo,
+            beatsPerMeasure: cursorRef.current.Iterator.CurrentMeasure.ActiveTimeSignature.Numerator
           });
         })
         .catch((error) => {

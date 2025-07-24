@@ -1,25 +1,31 @@
 import React, { useState, useMemo } from 'react';
-import { View, TouchableOpacity, Dimensions, StyleSheet, Text, ScrollView, Switch } from 'react-native';
+import { View, TouchableOpacity, Dimensions, StyleSheet, Text, ScrollView, Switch, Modal, TouchableWithoutFeedback, Platform } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
+import Icon from 'react-native-vector-icons/FontAwesome';
+import { Text as SvgText } from 'react-native-svg';
 
 interface TempoGraphProps {
   warpingPath: [number, number][]; // Array of [refIdx, liveIdx]
-  refTempo: number;                 // Reference tempo in BPM
-  beatsPerMeasure: number;          // Number of beats per measure
-  scoreName: string;                // Title of the musical score
+  refTempo: number; // Reference tempo in BPM
+  beatsPerMeasure: number; // Number of beats per measure
+  scoreName: string; // Title of the musical score
+  disabled: boolean; // Boolean to determine when we disable show tempo graph button               
+  sampleRate: number; // ScoreFollower's sample rate
+  frameSize: number; // ScoreFollower's frame size
 }
 
-const SAMPLE_RATE = 44100;
-const FRAME_SIZE = 4096;
-
-// Bounds for BPM - made for BPM spikes
-const MIN_BPM = 40;
-const MAX_BPM = 240;
+// // Bounds for BPM - made for BPM spikes
+// const MIN_BPM = 40;
+// const MAX_BPM = 240;
 
 // Constant used for running average of measures
 const SMOOTH_RADIUS = 1; 
 
-const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPerMeasure, scoreName }) => {
+const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPerMeasure, scoreName, disabled, sampleRate, frameSize }) => {
+
+  // Set constant sample rate and frame size based on passed in args 
+  const SAMPLE_RATE = sampleRate;
+  const FRAME_SIZE = frameSize;
 
   const [showGraph, setShowGraph] = useState(false); // Boolean for showing graph
   const [applySmoothing, setApplySmoothing] = useState(true); // Boolean for smoothing option
@@ -73,7 +79,7 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
 
       if (t1 > t0) {
         const bpm = (beatsPerMeasure / (t1 - t0)) * 60; // Calculate BPM based on beats per measure over time of measure times 60
-        arr.push({ measure: m + 1, tempo: Math.min(Math.max(bpm, MIN_BPM), MAX_BPM) }); // Store BPM of measure in data structure 
+        arr.push({ measure: m + 1, tempo:bpm }); // Store BPM of measure in data structure 
       }
     }
     return arr;
@@ -101,6 +107,8 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
 
   }, [beatEventTimes]);
 
+  const displayOverall = beatEventTimes.length > 1 ? overallTempo.toFixed(1) : '--'; // Round overall tempo + error handling if no data 
+
   const labels = rawTempoByMeasure.map(m => m.measure.toString()); // X axis labels
 
   const bpms   = applySmoothing ? smoothTempo : rawTempoByMeasure.map(m => m.tempo); // Get correct BPM values per measure based on if smoothing option is on or not
@@ -111,58 +119,97 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
 
   return (
     <View style={styles.container}>
-
+      
       {/* Button for showing / hiding tempo by measure graph */}
-      <TouchableOpacity style={styles.button} onPress={() => setShowGraph(v => !v)}>
-        <Text style={styles.buttonText}>{showGraph ? 'Hide Tempo Graph' : 'Show Tempo Graph'}</Text>
-      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.button, disabled && styles.disabledButton]}
+        disabled={disabled}
+        onPress={() => setShowGraph(true)}
+      >
+        <Icon
+            name="area-chart"
+            size={16}
+            color="#FFF"
+          />     
+        </TouchableOpacity>
 
       {/* Tempo by measure graph */}
-      {showGraph && (
-        <>
-          {/* Smoothing Filter */}
-          <View style={styles.filterContainer}>
-            <Text style={styles.filterLabel}>Smoothing:</Text>
-            <Switch value={applySmoothing} onValueChange={setApplySmoothing} />
-            <Text style={styles.filterLabel}>{applySmoothing ? 'On' : 'Off'}</Text>
-          </View>
+      <Modal
+        transparent
+        animationType="fade"
+        visible={showGraph}
+        onRequestClose={() => setShowGraph(false)}
+      >
+        <View style={styles.modalWrapper}>
+          <TouchableWithoutFeedback onPress={() => setShowGraph(false)}>
+            <View style={styles.backdrop} />
+          </TouchableWithoutFeedback>
+           {/* Score info - ref tempo, overall soloist tempo, etc.*/}
+          <View style={styles.popupContainer}>
+            <Text style={styles.popupTitle}>{
+              `${scoreName} — Tempo by Measure`
+            }</Text>
+            <View style={styles.filterContainer}>
+              <Text style={styles.filterLabel}>Smoothing:</Text>
+              <Switch
+                value={applySmoothing}
+                onValueChange={setApplySmoothing}
+              />
+              <Text style={styles.filterLabel}>
+                {applySmoothing ? 'On' : 'Off'}
+              </Text>
+            </View>
 
-          {/* Score info - ref tempo, overall soloist tempo, etc.*/}
-          <View style={styles.chartWrapper}>
-            <Text style={styles.title}>{`${scoreName} — Tempo by Measure`}</Text>
-            <Text style={styles.infoText}>Ref Tempo: {refTempo.toFixed(1)} BPM</Text>
-            <Text style={styles.infoText}>Overall: {overallTempo.toFixed(1)} BPM</Text>
+            <Text style={styles.infoText}>
+              Ref Tempo: {refTempo} BPM
+            </Text>
+            <Text style={styles.infoText}>
+              Overall: {displayOverall} BPM
+            </Text>
+
             <View style={styles.chartArea}>
-
-
-              {/* Y label */}
+               {/* Y label */}
               <Text style={styles.yAxisLabel}>Tempo (BPM)</Text>
-
-              {/* Actual chart with horizontal scroll */}
-              <ScrollView horizontal showsHorizontalScrollIndicator>
+              <ScrollView
+                horizontal showsHorizontalScrollIndicator>
                 <LineChart
                   data={{ labels, datasets: [{ data }] }}
                   width={chartW}
-                  height={240}
+                  height={200}
                   chartConfig={chartConfig}
                   bezier
                   style={styles.chart}
                   fromZero
                   yLabelsOffset={10}
                   xLabelsOffset={-10}
-                  renderDotContent={({ x, y, index }) => (
-                    <Text key={index} style={[styles.dotLabel, { left: x - 12, top: y - 16 }]}>
-                      {data[index]}
-                    </Text>
-                  )}
+                  
+                    renderDotContent={({ x, y, index }) => (
+                      <SvgText
+                        key={index}
+                        x={x}
+                        y={y - 8}                  // shift text a bit above the dot
+                        fontSize="10"
+                        fill="#000"
+                        textAnchor="middle"        // center horizontally
+                      >
+                        {data[index]}
+                      </SvgText>
+                    )}
                 />
               </ScrollView>
             </View>
             {/* X label*/}
             <Text style={styles.xAxisLabel}>Measure Number</Text>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowGraph(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
           </View>
-        </>
-      )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -176,72 +223,112 @@ const chartConfig = {
   labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
   propsForDots: { r: '4', strokeWidth: '1', stroke: '#1e90ff' }
 };
+
 // Styles for UI
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 8, 
-    backgroundColor: '#fff'
+ container: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'transparent',
+  },
+  modalWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   button: {
-    padding: 10,
+    padding: 12,
     borderRadius: 8,
     backgroundColor: '#2C3E50',
     alignItems: 'center',
-    marginBottom: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  buttonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
+  buttonText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+    popupContainer: {
+    width: '85%',
+    maxHeight: '80%',
+    padding: 20,
+    backgroundColor: '#FCFCFC',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 10,
+  },
+  popupTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   filterContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 8,
+    marginVertical: 10,
   },
   filterLabel: {
-    marginHorizontal: 8,
-    fontSize: 14,
+    marginHorizontal: 6,
+    fontSize: 15,
     fontWeight: '600',
-  },
-  chartWrapper: {
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
   },
   infoText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 4,
+    textAlign: 'center',
+    marginVertical: 4,
   },
   chartArea: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginVertical: 12,
   },
   yAxisLabel: {
     transform: [{ rotate: '-90deg' }],
-    fontSize: 8,
-    fontWeight: 'bold',
-    marginLeft: -12,
+    fontSize: 12,
+    fontWeight: '700',
+    marginRight: 6,
   },
   chart: {
     borderRadius: 12,
+    backgroundColor: '#FFFFFF',
   },
   dotLabel: {
     position: 'absolute',
-    fontSize: 8,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    paddingHorizontal: 1,
-    borderRadius: 3,
+    fontSize: 10,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: 3,
+    borderRadius: 4,
   },
   xAxisLabel: {
-    marginTop: 4,
-    fontSize: 8,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  closeButton: {
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#2C3E50',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  disabledButton: {
+    backgroundColor: '#555',
   },
 });
 

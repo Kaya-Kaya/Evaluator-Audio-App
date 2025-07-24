@@ -10,6 +10,8 @@ import { Platform } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
+import TempoGraph from './TempoGraph';
+
 
 // Hash map - score name -> score's wav file (expo implementation using require)
 const refAssetMap: Record<string, any> = {
@@ -26,6 +28,7 @@ interface ScoreFollowerTestProps {
   dispatch: (action: { type: string; payload?: any }) => void; // Dispatch function used to update global state
   bpm?: number; // Optional BPM number,
   FeaturesCls?: FeaturesConstructor<any>;
+  state: any;
 }
 
 interface CSVRow { // Interface used to store CSV info 
@@ -40,6 +43,7 @@ export default function ScoreFollowerTest({
   dispatch,
   bpm = 100, // Default BPM if not provided in props
   FeaturesCls = CENSFeatures,
+  state
 }: ScoreFollowerTestProps) {
   const [processing, setProcessing] = useState(false); // Boolean for if score follower is running
   const [liveFile, setLiveFile] = useState<{ uri: string; name: string } | null>(null);
@@ -53,6 +57,10 @@ export default function ScoreFollowerTest({
   const inputRef = useRef<HTMLInputElement>(null); // Reference to the file select HTML element 
   const frameSecRef = useRef<number>(0);
   const csvDataRef = useRef<CSVRow[]>([]);
+  const [warpingPath, setWarpingPath] = useState<[number, number][]>([]);
+  const[frameSize, setFrameSize] = useState<number>(0);
+  const[sampleRate, setSampleRate] = useState<number>(0);
+  const [performanceComplete, setPerformanceComplete] = useState(false);
 
   // Unload the sound when the component unmounts to free up memory
   useEffect(() => {
@@ -154,17 +162,20 @@ export default function ScoreFollowerTest({
   const runFollower = async () => {
     if (!score) return; // Do nothing if no score is selected 
     setProcessing(true); // Turn on processing boolean state
-
+    setPerformanceComplete(false);
     try {
       const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
       const isWeb = Platform.OS === 'web'; // Boolean indicating if user is on website version or not
-      const refUri = isWeb ? `/${base}/baseline/aotgs_solo_ref.wav` : Asset.fromModule(refAssetMap[base]).uri; // Path to reference wav file of selected score depending on web or expo go version
+      const refUri = isWeb ? `/${base}/baseline/instrument_0.wav` : Asset.fromModule(refAssetMap[base]).uri; // Path to reference wav file of selected score depending on web or expo go version
       followerRef.current = await ScoreFollower.create(refUri, FeaturesCls); // Initialize score follower instance (default parameters from ScoreFollower.tsx)
       const follower = followerRef.current!; 
 
       // Extract sample rate and window length from the ScoreFollower instance
       const sampleRate = follower.sr;
       const winLength = follower.winLen 
+
+      setSampleRate(follower.sr)
+      setFrameSize(follower.winLen)
 
       const frameSize = winLength; // Set framesize to window length property of scorefollower
       frameSecRef.current = frameSize / sampleRate; 
@@ -237,7 +248,7 @@ export default function ScoreFollowerTest({
 
       {
         const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-        const csvUri = isWeb ? `/${base}/baseline/aotgs_tempo.csv` : Asset.fromModule(csvAssetMap[base]).uri; // Path the CSV given score name (web and alternative expo go version)
+        const csvUri = isWeb ? `/${base}/baseline/aotgs_solo_100bpm.csv` : Asset.fromModule(csvAssetMap[base]).uri; // Path the CSV given score name (web and alternative expo go version)
         const text = isWeb ? await fetch(csvUri).then(r => r.text()) : await FileSystem.readAsStringAsync(csvUri, { encoding: FileSystem.EncodingType.UTF8 }); // fetch the CSV text
         const lines = text.trim().split('\n'); // Split the CSV into lines (one line per row)
 
@@ -260,6 +271,7 @@ export default function ScoreFollowerTest({
           stepSize,
           refTimes
         );
+
         // Update CSV Interface with predicted live times for each note 
         csvDataRef.current = csvDataRef.current.map((row, i) => ({
           ...row,
@@ -271,7 +283,7 @@ export default function ScoreFollowerTest({
       // Show full path
       console.log(pathRef.current)
       // return
-      
+      setWarpingPath(pathRef.current);
        
       const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => { // Callback to handle audio playback status updates
         if (!status.isLoaded) return;  // Exit early if sound isn't loaded
@@ -289,6 +301,7 @@ export default function ScoreFollowerTest({
         // Handle end of playback
         if (status.didJustFinish) {
           setProcessing(false);
+          setPerformanceComplete(true);
           soundRef.current?.setOnPlaybackStatusUpdate(null);
         }
       };
@@ -367,7 +380,7 @@ export default function ScoreFollowerTest({
   // }
 
   return (
-    <View style={styles.container}>
+    <View>
       {bpm ? (
         <Text style={styles.tempoText}>Reference Tempo: {bpm} BPM</Text>
       ):
@@ -375,19 +388,10 @@ export default function ScoreFollowerTest({
         <></>
       )
       }
-      {/* Web file picker - hidden for styling purposes*/}
-      {/* <input
-        ref={inputRef}
-        type="file"
-        accept=".wav"
-        style={styles.hiddenInput}
-        disabled={processing}
-        onChange={handleFileChange}
-      /> */}
-
       {/* Render wav upload button for web version */}
       {Platform.OS === 'web' ? (
         <>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 4 }}>
           <input
             ref={inputRef}
             type="file"
@@ -406,6 +410,19 @@ export default function ScoreFollowerTest({
               {liveFile ? `Selected: ${liveFile.name}` : 'Upload a Performance'} 
             </Text>
           </TouchableOpacity>
+
+          <TempoGraph
+            refTempo={bpm}
+            beatsPerMeasure={state.beatsPerMeasure}
+            warpingPath={warpingPath}
+            scoreName={score.replace(/\.musicxml$/, '')}
+            disabled={!performanceComplete || liveFile == null}
+            frameSize={frameSize}
+            sampleRate={sampleRate}
+            
+          />
+        </View>
+          
         </>
         
       ): ( 
@@ -429,21 +446,22 @@ export default function ScoreFollowerTest({
         <Text style={styles.buttonText}>
           {processing ? 'Running...' : 'Play'}
         </Text>
+        
       </TouchableOpacity>
+
 
       {/* <View style={styles.status}>
         <Text style={styles.label}>
           Time: {estimatedTime.toFixed(2)} s → Beat: {estimatedBeat.toFixed(2)}
         </Text>
       </View> */}
+      
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    marginVertical: 12
-  },
+
   button: {
     padding: 12,
     backgroundColor: '#2C3E50',
@@ -456,6 +474,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFF',
     fontWeight: 'bold',
+    fontSize: 14,
   },
   status: {
     marginTop: 16,

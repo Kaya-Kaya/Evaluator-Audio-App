@@ -56,8 +56,8 @@ export default function App() {
       referenceAudioUri: null as string | null, // reference to score's top voice audio
       estimatedBeat: null as number | null,
       estimatedBeatError: null as string | null,
-      bottomAudioUri:   null as string | null,  //playback audio uri
-
+      bottomAudioUri: null as string | null,  //playback audio uri
+      beatsPerMeasure: 0
     },
   );
 
@@ -435,6 +435,7 @@ export default function App() {
               score={state.score}
               dispatch={dispatch}
               bpm={state.tempo}
+              state={state}
             />
             </Animated.View>
             
