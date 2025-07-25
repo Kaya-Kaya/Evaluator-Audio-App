@@ -12,6 +12,7 @@ import TempoGraph from './TempoGraph';
 import { resampleAudio, toMono } from '../utils/audioUtils';
 import { calculateWarpedTimes, precomputeAlignmentPath } from '../utils/alignmentUtils';
 import { LiveFile, parseWebWavFile, pickMobileWavFile } from '../utils/fileSelectorUtils';
+import { loadCsvInfo } from '../utils/csvParsingUtils';
 
 // Hash map - score name -> score's wav file (expo implementation using require)
 const refAssetMap: Record<string, any> = {
@@ -129,19 +130,10 @@ export default function ScoreFollowerTest({
       {
         const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
         const csvUri = isWeb ? `/${base}/baseline/ode_to_joy_300bpm_NEW.csv` : Asset.fromModule(csvAssetMap[base]).uri; // Path the CSV given score name (web and alternative expo go version)
-        const text = isWeb ? await fetch(csvUri).then(r => r.text()) : await FileSystem.readAsStringAsync(csvUri, { encoding: FileSystem.EncodingType.UTF8 }); // fetch the CSV text
-        const lines = text.trim().split('\n'); // Split the CSV into lines (one line per row)
 
-        const rows: CSVRow[] = lines.slice(1).map(line => { // Parse each data row (skipping the header at index 0)
-          const cols = line.split(','); // Split a single CSV line into its comma-separated columns
-          const beat = parseFloat(cols[0]) + 1;  // Column 0: beat index (add 1 to convert from zero-based to 1-based counting - NOTE: Beat movement logic was made to work with starting beat of 1 insteaf of beat 0)
-          const refTime = parseFloat(cols[5]); // Column 5: reference time for this beat (in seconds)
-          const liveTime = parseFloat(cols[6]);  // Column 6: actual live performance time for this beat (in seconds)
-          const predictedTime = 0 // Set to 0 for now, will populate later (need array of ref times)
-          return { beat, refTime, liveTime, predictedTime };
-
-        });
+        const rows = await loadCsvInfo(csvUri, isWeb);
         csvDataRef.current = rows; // Save the parsed CSV rows for downstream use
+        
         const stepSize  = frameSecRef.current; // Duration of each frame in seconds
         const warpingPath = pathRef.current; // The Dynamic Time Warping path: an array of [referenceIndex, liveIndex] pairs
         const refTimes = csvDataRef.current.map(r => r.refTime); // Pull out just the reference times from each row to feed into the calculateWarpedTimes()
@@ -205,8 +197,6 @@ export default function ScoreFollowerTest({
       setProcessing(false);
     }
   };
-
-  
 
   return (
     <View>
@@ -328,4 +318,3 @@ const styles = StyleSheet.create({
   },
 
 });
-

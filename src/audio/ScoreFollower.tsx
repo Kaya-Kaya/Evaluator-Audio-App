@@ -42,7 +42,7 @@ export class ScoreFollower {
     maxRunCount = 3,
     diagWeight = 0.75,
     sr = 44100,
-    winLen = 1024,
+    winLen = 4096,
     hopLen = winLen,
   ) {
     const instance = new ScoreFollower(FeaturesClass, sr, winLen);
