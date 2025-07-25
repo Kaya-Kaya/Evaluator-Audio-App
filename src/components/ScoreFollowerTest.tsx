@@ -55,12 +55,13 @@ export default function ScoreFollowerTest({
   const audioDataRef = useRef<Float32Array>(new Float32Array()); // Reference to decoded audio sample data
   const pathRef = useRef<Array<[number, number]>>([]); // Reference to alignment path
   const inputRef = useRef<HTMLInputElement>(null); // Reference to the file select HTML element 
-  const frameSecRef = useRef<number>(0);
-  const csvDataRef = useRef<CSVRow[]>([]);
-  const [warpingPath, setWarpingPath] = useState<[number, number][]>([]);
-  const[frameSize, setFrameSize] = useState<number>(0);
-  const[sampleRate, setSampleRate] = useState<number>(0);
-  const [performanceComplete, setPerformanceComplete] = useState(false);
+  const frameSecRef = useRef<number>(0); // Reference to duration of each frame in seconds
+  const csvDataRef = useRef<CSVRow[]>([]); // Array that contains CSV rows (CSV row == info on a note in a selected score)
+  const [warpingPath, setWarpingPath] = useState<[number, number][]>([]); // State to store warping path when computed 
+  const[frameSize, setFrameSize] = useState<number>(0); // State to store frame size of score follower 
+  const[sampleRate, setSampleRate] = useState<number>(0); // State to store sample rate of score follower
+  const [performanceComplete, setPerformanceComplete] = useState(false); // State to determine if plackback of a score is finished or not 
+  const isWeb = Platform.OS === 'web'; // Boolean indicating if user is on website version or not
 
   // Unload the sound when the component unmounts to free up memory
   useEffect(() => {
@@ -90,7 +91,6 @@ export default function ScoreFollowerTest({
     try {
       
       const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-      const isWeb = Platform.OS === 'web'; // Boolean indicating if user is on website version or not
       const refUri = isWeb ? `/${base}/baseline/instrument_0.wav` : Asset.fromModule(refAssetMap[base]).uri; // Path to reference wav file of selected score depending on web or expo go version
 
       // Initialize score follower instance (default parameters from ScoreFollower.tsx)
@@ -104,7 +104,7 @@ export default function ScoreFollowerTest({
 
       const frameSize = winLen; // Set framesize to window length property of scorefollower
       const sampleRate = sr; // Set sampleRate property of scorefollower
-      frameSecRef.current = frameSize / sampleRate; 
+      frameSecRef.current = frameSize / sampleRate; // Duration of each frame in seconds
 
       let buffer: ArrayBuffer; // Define an array buffer
 
@@ -119,19 +119,17 @@ export default function ScoreFollowerTest({
       }
 
       const result = await decode(buffer, { symmetric: true }); // Decode the WAV buffer into PCM audio data  - passed in symmetric = TRUE for better PCM samples when compared to the Python version
-      let audioData = toMono(result.channelData);
-      audioData = resampleAudio(audioData, result.sampleRate, sampleRate)
+      let audioData = toMono(result.channelData); // Convert these PCM audio data to mono if needed 
+      audioData = resampleAudio(audioData, result.sampleRate, sampleRate) // Resample the resulting audio data if needed
       audioDataRef.current = audioData;
-
+      pathRef.current = precomputeAlignmentPath(audioData, frameSize, follower); // Compute alignment path 
       // downloadFullPCM(audioDataRef.current)
-
-      pathRef.current = precomputeAlignmentPath(audioData, frameSize, follower);
 
       {
         const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
         const csvUri = isWeb ? `/${base}/baseline/ode_to_joy_300bpm_NEW.csv` : Asset.fromModule(csvAssetMap[base]).uri; // Path the CSV given score name (web and alternative expo go version)
 
-        const rows = await loadCsvInfo(csvUri, isWeb);
+        const rows = await loadCsvInfo(csvUri, isWeb); // Obtain rarray of csv rows (info on each note of score such as beat value, ref time when note is played, etc.)
         csvDataRef.current = rows; // Save the parsed CSV rows for downstream use
         
         const stepSize  = frameSecRef.current; // Duration of each frame in seconds
@@ -316,5 +314,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-
 });
