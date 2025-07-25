@@ -1,3 +1,5 @@
+import { ScoreFollower } from "../audio/ScoreFollower";
+
 /**
  * Given a DTW warping path and reference audio timestamps, compute estimated live audio timestamps.
  *
@@ -65,3 +67,42 @@ export const calculateWarpedTimes = (
 
     return warpedTimes;
   }
+
+
+/**
+ * Computes the full dynamic time warping alignment path for the given audio data.
+ *
+ * @param audioData - Mono PCM audio data as Float32Array
+ * @param frameSize - Number of samples per frame (window length)
+ * @param follower - Initialized ScoreFollower instance
+ * @returns An array of [refFrameIndex, liveFrameIndex] pairs representing the alignment path
+ */
+export function precomputeAlignmentPath(
+  audioData: Float32Array,
+  frameSize: number,
+  follower: ScoreFollower
+): [number, number][] {
+  const totalFrames = Math.ceil(audioData.length / frameSize);
+  const path: [number, number][] = [];
+
+  for (let i = 0; i < totalFrames; i++) {
+    const start = i * frameSize;
+    let frame = audioData.subarray(start, start + frameSize);
+
+    // Pad the frame if it's shorter than expected
+    if (frame.length < frameSize) {
+      const pad = new Float32Array(frameSize);
+      pad.set(frame);
+      frame = pad;
+    }
+
+    // Step the follower with a plain number[]
+    follower.step(Array.from(frame));
+
+    // Capture the last updated warping step
+    const last = follower.path[follower.path.length - 1] as [number, number];
+    path.push(last);
+  }
+
+  return path;
+}

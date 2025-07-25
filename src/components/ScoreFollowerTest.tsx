@@ -6,12 +6,12 @@ import { ScoreFollower } from '../audio/ScoreFollower';
 import { CENSFeatures } from '../audio/FeaturesCENS';
 import { FeaturesConstructor } from '../audio/Features';
 import { Platform } from 'react-native';
-import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
 import TempoGraph from './TempoGraph';
 import { resampleAudio, toMono } from '../utils/audioUtils';
-import { calculateWarpedTimes } from '../utils/alignmentUtils';
+import { calculateWarpedTimes, precomputeAlignmentPath } from '../utils/alignmentUtils';
+import { LiveFile, parseWebWavFile, pickMobileWavFile } from '../utils/fileSelectorUtils';
 
 // Hash map - score name -> score's wav file (expo implementation using require)
 const refAssetMap: Record<string, any> = {
@@ -45,10 +45,10 @@ export default function ScoreFollowerTest({
   FeaturesCls = CENSFeatures,
   state
 }: ScoreFollowerTestProps) {
-  const [processing, setProcessing] = useState(false); // Boolean for if score follower is running
-  const [liveFile, setLiveFile] = useState<{ uri: string; name: string } | null>(null);
-  const nextIndexRef = useRef<number>(0);  // Track next CSV index to dispatch
 
+  const [processing, setProcessing] = useState(false); // Boolean for if score follower is running
+  const [liveFile, setLiveFile] = useState<LiveFile | null>(null);
+  const nextIndexRef = useRef<number>(0);  // Track next CSV index to dispatch
   const soundRef = useRef<Audio.Sound | null>(null); // Reference to Audio Component
   const followerRef = useRef<ScoreFollower | null>(null); // Reference to score follower instance
   const audioDataRef = useRef<Float32Array>(new Float32Array()); // Reference to decoded audio sample data
@@ -71,50 +71,38 @@ export default function ScoreFollowerTest({
   }, []);
 
   // Web versin of wav file upload 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { 
-    const file = e.target.files?.[0] ?? null;
-    if (file && file.name.toLowerCase().endsWith('.wav')) {
-      const uri = URL.createObjectURL(file);
-      setLiveFile({ uri, name: file.name });
-    } else {
-      setLiveFile(null);
-    }
-  };
-
-  // Mobile version of wav file upload usign DocumentPicker
-  const handleMobileFileChange = async () => {
-    try {
-      const res = await DocumentPicker.getDocumentAsync({ type: 'audio/wav', copyToCacheDirectory: true });
-      if (!res.canceled && res.assets && res.assets.length > 0) {
-        const asset = res.assets[0];
-        setLiveFile({ uri: asset.uri, name: asset.name });
-      } else {
-        setLiveFile(null);
-      }
-    } catch (err) {
-      console.error('DocumentPicker Error:', err);
-    }
-  };
+  function onWebChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = parseWebWavFile(e);
+    setLiveFile(file);
+  }
+  // Mobile version of wav file upload using DocumentPicker
+  async function onMobilePress() {
+    const file = await pickMobileWavFile();
+    setLiveFile(file);
+  }
 
   const runFollower = async () => {
     if (!score) return; // Do nothing if no score is selected 
     setProcessing(true); // Turn on processing boolean state
     setPerformanceComplete(false);
+
     try {
+      
       const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
       const isWeb = Platform.OS === 'web'; // Boolean indicating if user is on website version or not
       const refUri = isWeb ? `/${base}/baseline/instrument_0.wav` : Asset.fromModule(refAssetMap[base]).uri; // Path to reference wav file of selected score depending on web or expo go version
-      followerRef.current = await ScoreFollower.create(refUri, FeaturesCls); // Initialize score follower instance (default parameters from ScoreFollower.tsx)
+
+      // Initialize score follower instance (default parameters from ScoreFollower.tsx)
+      followerRef.current = await ScoreFollower.create(refUri, FeaturesCls); 
       const follower = followerRef.current!; 
 
-      // Extract sample rate and window length from the ScoreFollower instance
-      const sampleRate = follower.sr;
-      const winLength = follower.winLen 
+      // Extract and set sample rate and window length from the ScoreFollower instance
+      const { sr, winLen } = follower;
+      setSampleRate(sr)
+      setFrameSize(winLen)
 
-      setSampleRate(follower.sr)
-      setFrameSize(follower.winLen)
-
-      const frameSize = winLength; // Set framesize to window length property of scorefollower
+      const frameSize = winLen; // Set framesize to window length property of scorefollower
+      const sampleRate = sr; // Set sampleRate property of scorefollower
       frameSecRef.current = frameSize / sampleRate; 
 
       let buffer: ArrayBuffer; // Define an array buffer
@@ -132,30 +120,11 @@ export default function ScoreFollowerTest({
       const result = await decode(buffer, { symmetric: true }); // Decode the WAV buffer into PCM audio data  - passed in symmetric = TRUE for better PCM samples when compared to the Python version
       let audioData = toMono(result.channelData);
       audioData = resampleAudio(audioData, result.sampleRate, sampleRate)
-
       audioDataRef.current = audioData;
 
       // downloadFullPCM(audioDataRef.current)
 
-      const totalFrames = Math.ceil(audioData.length / frameSize); // Compute total frames for computing alignment path 
-      pathRef.current = []; // Initialize alignment path reference 
-
-      // Precompute full alignment path offline
-      for (let i = 0; i < totalFrames; i++) {
-
-        const start = i * frameSize; // Get starting frame 
-        let frame = audioData.subarray(start, start + frameSize); // Extract the audio frame from the buffer
-
-        // Pad the frame if it's shorter than expected
-        if (frame.length < frameSize) {
-          const pad = new Float32Array(frameSize);
-          pad.set(frame);
-          frame = pad;
-        }
-        follower.step(Array.from(frame)); // Pass frame into score follower's step function to populate path
-        const last = follower.path[follower.path.length - 1]; // Get last updated frame from path
-        pathRef.current.push(last); // Insert frame into our path reference 
-      }
+      pathRef.current = precomputeAlignmentPath(audioData, frameSize, follower);
 
       {
         const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
@@ -258,7 +227,7 @@ export default function ScoreFollowerTest({
             accept=".wav"
             style={styles.hiddenInput}
             disabled={processing}
-            onChange={handleFileChange}
+            onChange={onWebChange}
           />
           {/* Visable web file picker - actual button shown*/}
           <TouchableOpacity
@@ -289,7 +258,7 @@ export default function ScoreFollowerTest({
         // Render wav upload button for expo go version 
         <TouchableOpacity
           style={[styles.fileButton, processing && styles.disabledButton]}
-          onPress={handleMobileFileChange}
+          onPress={onMobilePress}
           disabled={processing}
         >
           <Text style={styles.buttonText}>
