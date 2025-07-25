@@ -5,13 +5,13 @@ import { decode } from 'wav-decoder';
 import { ScoreFollower } from '../audio/ScoreFollower';
 import { CENSFeatures } from '../audio/FeaturesCENS';
 import { FeaturesConstructor } from '../audio/Features';
-import waveResampler from 'wave-resampler';
 import { Platform } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
 import TempoGraph from './TempoGraph';
-
+import { resampleAudio, toMono } from '../utils/audioUtils';
+import { calculateWarpedTimes } from '../utils/alignmentUtils';
 
 // Hash map - score name -> score's wav file (expo implementation using require)
 const refAssetMap: Record<string, any> = {
@@ -52,7 +52,6 @@ export default function ScoreFollowerTest({
   const soundRef = useRef<Audio.Sound | null>(null); // Reference to Audio Component
   const followerRef = useRef<ScoreFollower | null>(null); // Reference to score follower instance
   const audioDataRef = useRef<Float32Array>(new Float32Array()); // Reference to decoded audio sample data
-  const lastFrameRef = useRef<number>(-1); // Reference to last frame that was processed
   const pathRef = useRef<Array<[number, number]>>([]); // Reference to alignment path
   const inputRef = useRef<HTMLInputElement>(null); // Reference to the file select HTML element 
   const frameSecRef = useRef<number>(0);
@@ -97,68 +96,6 @@ export default function ScoreFollowerTest({
     }
   };
 
-  // Given warped path and an array of timestamps of when each note is played in the reference audio, it will return array of ESTIMATED timestamps of when each note is played in the live audio
-  const calculateWarpedTimes = (
-    warpingPath: number[][],
-    stepSize: number,
-    refTimes: number[], 
-  ): number[] => {
-    const warpedTimes: number[] = [];
-
-    // Apply step size to both axes of the warping path
-    const pathTimes = warpingPath.map(([refIdx, liveIdx]) => [refIdx * stepSize, liveIdx * stepSize] as [number, number]);
-    const refPathTimes = pathTimes.map(pt => pt[0]);
-    const livePathTimes = pathTimes.map(pt => pt[1]);
-
-    for (const queryTime of refTimes) {
-      // Compute diffs from every refPathTime
-      const diffs = refPathTimes.map(t => t - queryTime);
-      // Find index of the minimum absolute diff
-      let idx = 0;
-      let minAbs = Math.abs(diffs[0]);
-      for (let i = 1; i < diffs.length; i++) {
-        const absDi = Math.abs(diffs[i]);
-        if (absDi < minAbs) {
-          minAbs = absDi;
-          idx = i;
-        }
-      }
-
-      // Choose a pair of points to interpolate between
-      let leftIdx: number, rightIdx: number;
-      if (diffs[idx] >= 0 && idx > 0) {
-        leftIdx = idx - 1;
-        rightIdx = idx;
-      } else if (idx + 1 < livePathTimes.length) {
-        leftIdx = idx;
-        rightIdx = idx + 1;
-      } else {
-        leftIdx = rightIdx = idx;
-      }
-
-      // If no interpolation needed, just take the point
-      if (leftIdx === rightIdx) {
-        warpedTimes.push(livePathTimes[leftIdx]);
-        continue;
-      }
-
-      // Linear interpolation fraction along the ref‐path segment
-      const queryRefOffset = queryTime - refPathTimes[leftIdx];  // ≥ 0
-      const queryOffsetNorm = queryRefOffset === 0
-        ? 0
-        : queryRefOffset / stepSize;
-
-      // Project that fraction into the live‐path segment
-      const liveMaxOffset = livePathTimes[rightIdx] - livePathTimes[leftIdx];
-      const queryOffsetLive = liveMaxOffset * queryOffsetNorm;
-
-      warpedTimes.push(livePathTimes[leftIdx] + queryOffsetLive);
-    }
-
-    return warpedTimes;
-  }
-
-
   const runFollower = async () => {
     if (!score) return; // Do nothing if no score is selected 
     setProcessing(true); // Turn on processing boolean state
@@ -193,38 +130,12 @@ export default function ScoreFollowerTest({
       }
 
       const result = await decode(buffer, { symmetric: true }); // Decode the WAV buffer into PCM audio data  - passed in symmetric = TRUE for better PCM samples when compared to the Python version
-
-      let audioData = result.channelData[0]
-
-      // Convert to mono if needed
-      if (result.channelData.length > 1) {
-          const numCh = result.channelData.length;
-          const len = audioData.length;
-          const mono = new Float32Array(len);
-          for (let i = 0; i < len; i++) {
-              let sum = 0;
-              for (let ch = 0; ch < numCh; ch++) sum += result.channelData[ch][i];
-              mono[i] = sum / numCh;
-          }
-          audioData = mono;
-      }
-
-      // Resample if sample rates differ
-      if (result.sampleRate !== sampleRate) {
-          const resampled = waveResampler.resample(
-              audioData,
-              result.sampleRate,
-              sampleRate
-          );
-          audioData =
-              resampled instanceof Float32Array
-                  ? resampled
-                  : Float32Array.from(resampled as number[]);
-      }
+      let audioData = toMono(result.channelData);
+      audioData = resampleAudio(audioData, result.sampleRate, sampleRate)
 
       audioDataRef.current = audioData;
 
-       // downloadFullPCM(audioDataRef.current)
+      // downloadFullPCM(audioDataRef.current)
 
       const totalFrames = Math.ceil(audioData.length / frameSize); // Compute total frames for computing alignment path 
       pathRef.current = []; // Initialize alignment path reference 
@@ -248,7 +159,7 @@ export default function ScoreFollowerTest({
 
       {
         const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-        const csvUri = isWeb ? `/${base}/baseline/aotgs_solo_100bpm.csv` : Asset.fromModule(csvAssetMap[base]).uri; // Path the CSV given score name (web and alternative expo go version)
+        const csvUri = isWeb ? `/${base}/baseline/ode_to_joy_300bpm_NEW.csv` : Asset.fromModule(csvAssetMap[base]).uri; // Path the CSV given score name (web and alternative expo go version)
         const text = isWeb ? await fetch(csvUri).then(r => r.text()) : await FileSystem.readAsStringAsync(csvUri, { encoding: FileSystem.EncodingType.UTF8 }); // fetch the CSV text
         const lines = text.trim().split('\n'); // Split the CSV into lines (one line per row)
 
@@ -326,58 +237,7 @@ export default function ScoreFollowerTest({
     }
   };
 
-  // function downloadFullPCM(audioData, filename = 'ts_first100_pcm.txt') {
-  //   // 1) Grab the first 100 samples (300 since your SAMPLE_RATE is 3× the frame-count)
-  //   const slice100 = audioData.slice(0, 1000);
-
-  //   // 2) Format like Python does
-  //   const text = Array.from(slice100)
-  //     .map(pythonFormat)
-  //     .join('\n');
-
-  //   // 3) Trigger download in browser
-  //   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-  //   const url = URL.createObjectURL(blob);
-  //   const a = document.createElement('a');
-  //   a.href = url;
-  //   a.download = filename;
-  //   document.body.appendChild(a);
-  //   a.click();
-  //   document.body.removeChild(a);
-  //   URL.revokeObjectURL(url);
-  // }
-
-  // function pythonFormat(v) {
-  //   // Python prints "0.0" for zero
-  //   if (Object.is(v, 0)) return '0.0';
-
-  //   const absV = Math.abs(v);
-  //   const expVal = Math.floor(Math.log10(absV));
-
-  //   // Python repr/str uses exponential for exp < -4 or exp >= 17
-  //   if (expVal < -4 || expVal >= 17) {
-  //     // Generate a long exponential, then strip unneeded zeros
-  //     let [mant, exp] = v.toExponential(16).split('e');
-
-  //     // Trim trailing zeros from mantissa, then any stray dot
-  //     mant = mant.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.$/, '');
-
-  //     // Normalize exponent sign and pad to 2 digits
-  //     let sign = exp[0];
-  //     let digits = exp.slice(1);
-  //     if (sign !== '+' && sign !== '-') {
-  //       // unlikely, but just in case
-  //       digits = sign + digits;
-  //       sign = '+';
-  //     }
-  //     if (digits.length < 2) digits = '0' + digits;
-
-  //     return mant + 'e' + sign + digits;
-  //   } else {
-  //     // Fixed decimal: JS’s toString gives the shortest fixed repr for 1e‑4 ≤ |v| < 1e17
-  //     return v.toString();
-  //   }
-  // }
+  
 
   return (
     <View>
@@ -448,14 +308,6 @@ export default function ScoreFollowerTest({
         </Text>
         
       </TouchableOpacity>
-
-
-      {/* <View style={styles.status}>
-        <Text style={styles.label}>
-          Time: {estimatedTime.toFixed(2)} s → Beat: {estimatedBeat.toFixed(2)}
-        </Text>
-      </View> */}
-      
     </View>
   );
 }

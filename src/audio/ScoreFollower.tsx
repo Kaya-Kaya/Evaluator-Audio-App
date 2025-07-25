@@ -1,6 +1,6 @@
 const wav = require('node-wav');
-const waveResampler = require('wave-resampler');
 
+import { resampleAudio, toMono } from '../utils/audioUtils';
 import { Features, FeaturesConstructor } from './Features';
 import OnlineTimeWarping from './OnlineTimeWarping';
 
@@ -83,33 +83,12 @@ export class ScoreFollower {
 
     // 2. Decode WAV buffer
     const result = wav.decode(arrayBuffer);
-    let audioData = result.channelData[0];
 
-    // 3. Convert to mono if needed
-    if (result.channelData.length > 1) {
-        const numCh = result.channelData.length;
-        const len = audioData.length;
-        const mono = new Float32Array(len);
-        for (let i = 0; i < len; i++) {
-            let sum = 0;
-            for (let ch = 0; ch < numCh; ch++) sum += result.channelData[ch][i];
-            mono[i] = sum / numCh;
-        }
-        audioData = mono;
-    }
+    // 3. Convert to Mono if needed 
+    let audioData = toMono(result.channelData);
 
-    // 4. Resample if sample rates differ
-    if (result.sampleRate !== sr) {
-        const resampled = waveResampler.resample(
-            audioData,
-            result.sampleRate,
-            sr
-        );
-        audioData =
-            resampled instanceof Float32Array
-                ? resampled
-                : Float32Array.from(resampled as number[]);
-    }
+    // 4. Resample if needed 
+    audioData = resampleAudio(audioData, result.sampleRate, sr)
 
     // 5. Compute and return 
     return new FeaturesClass(sr, winLen, audioData, hopLen);
