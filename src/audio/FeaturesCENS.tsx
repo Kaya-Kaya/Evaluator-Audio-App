@@ -100,7 +100,7 @@ function spec_to_pitch_mtx(fs: number, fft_len: number, tuning: number = 0.0): n
     return out;
 }
 
-function dot(vec1: number[], vec2: number[]): number {
+export function dot(vec1: number[], vec2: number[]): number {
     let sum = 0;
     for (let i = 0; i < vec1.length; i++) {
         sum += vec1[i] * vec2[i];

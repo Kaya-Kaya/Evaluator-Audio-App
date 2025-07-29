@@ -1,3 +1,25 @@
+// # The MIT License (MIT)
+
+// Copyright (c) 2016 PART <info@gordonlesti.com>, <https://fheyen.github.io/>
+
+// > Permission is hereby granted, free of charge, to any person obtaining a copy
+// > of this software and associated documentation files (the "Software"), to deal
+// > in the Software without restriction, including without limitation the rights
+// > to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// > copies of the Software, and to permit persons to whom the Software is
+// > furnished to do so, subject to the following conditions:
+// >
+// > The above copyright notice and this permission notice shall be included in
+// > all copies or substantial portions of the Software.
+// >
+// > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// > IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// > FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// > AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// > LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// > OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// > THE SOFTWARE.
+
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Audio, AVPlaybackStatus } from 'expo-av';
@@ -13,6 +35,8 @@ import { resampleAudio, toMono } from '../utils/audioUtils';
 import { calculateWarpedTimes, precomputeAlignmentPath } from '../utils/alignmentUtils';
 import { LiveFile, parseWebWavFile, pickMobileWavFile } from '../utils/fileSelectorUtils';
 import { loadCsvInfo } from '../utils/csvParsingUtils';
+import DynamicTimeWarping from "dynamic-time-warping-ts";
+import { dot } from '../audio/FeaturesCENS';
 
 // Hash map - score name -> score's wav file (expo implementation using require)
 const refAssetMap: Record<string, any> = {
@@ -96,12 +120,15 @@ export default function ScoreFollowerTest({
       // Initialize score follower instance (default parameters from ScoreFollower.tsx)
       followerRef.current = await ScoreFollower.create(refUri, FeaturesCls); 
       const follower = followerRef.current!; 
+      const refFeatures = follower.ref.featuregram;
+      console.log("ref f : ",refFeatures)
 
       // Extract and set sample rate and window length from the ScoreFollower instance
       const { sr, winLen } = follower;
       setSampleRate(sr)
       setFrameSize(winLen)
-
+      
+      
       const frameSize = winLen; // Set framesize to window length property of scorefollower
       const sampleRate = sr; // Set sampleRate property of scorefollower
       frameSecRef.current = frameSize / sampleRate; // Duration of each frame in seconds
@@ -123,6 +150,32 @@ export default function ScoreFollowerTest({
       audioData = resampleAudio(audioData, result.sampleRate, sampleRate) // Resample the resulting audio data if needed
       audioDataRef.current = audioData;
       pathRef.current = precomputeAlignmentPath(audioData, frameSize, follower); // Compute alignment path 
+
+
+      // Get live features
+      const liveExtractor = new FeaturesCls(
+        sr,
+        winLen,
+        audioData,  
+        winLen     
+      );
+      const liveFeatures = liveExtractor.featuregram;
+      // console.log("live f : ",liveFeatures)
+      
+
+      // Define distance function for Offline DTW
+      const censDistance = (a: number[], b: number[]) => 1 - dot(a, b);
+
+      // Run Offline DTW given full features
+      const dtw = new DynamicTimeWarping(
+        refFeatures,    // Full ref features
+        liveFeatures,   // Full live features
+        censDistance // Distance function
+      );
+      const rawPath = dtw.getPath() // Get full path after run
+      console.log("raw path: ", rawPath) // Just print to console log for now
+      
+
       // downloadFullPCM(audioDataRef.current)
 
       {
