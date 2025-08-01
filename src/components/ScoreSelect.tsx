@@ -229,11 +229,9 @@ const WebFileInput = () => {
         (
           // Else render upload field for mobile
           <Animated.View 
-            style={
-              [...button_format]
-            }
+ 
             >
-              <TouchableOpacity onPress={nativeNoteFileUpload} >
+              <TouchableOpacity onPress={nativeNoteFileUpload} disabled={true} style={[...button_format, styles.disabledButton]}  >
                 <Animated.Text style={{color: button_text_style, fontWeight: "bold"}}>Upload File</Animated.Text>
               </TouchableOpacity>
           </Animated.View>
@@ -263,4 +261,7 @@ const styles = StyleSheet.create({
     shadowColor:'#000', shadowOffset:{ width:0, height:3 }, shadowOpacity:0.17, shadowRadius:3.05, elevation:4, backgroundColor:'#2C3E50' 
   },
   button_text: { textAlign:'center', fontSize:14, color:'#FFF', fontWeight:'bold' },
+  disabledButton: {
+    backgroundColor: '#555',
+  },
 })
