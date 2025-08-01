@@ -4,6 +4,7 @@ import { resampleAudio, toMono } from '../utils/audioUtils';
 import { Features, FeaturesConstructor } from './Features';
 import OnlineTimeWarping from './OnlineTimeWarping';
 
+import { testPitches } from './Pitch'
 /**
  * Performs online dynamic time warping (DTW) between reference audio and live microphone audio.
  */
@@ -90,6 +91,8 @@ export class ScoreFollower {
     // 4. Resample if needed 
     audioData = resampleAudio(audioData, result.sampleRate, sr)
 
+    // TEMP: test pitches
+    await testPitches(audioData, sr, 1024, 512)
     // 5. Compute and return 
     return new FeaturesClass(sr, winLen, audioData, hopLen);
   }

@@ -11,6 +11,7 @@
     "lint": "eslint . --fix && echo \"errors reported are the ones can't be fixed by eslint automatically\""
   },
   "dependencies": {
+    "@dipscope/pitch-detector": "^1.0.1",
     "@expo/metro-runtime": "~5.0.4",
     "@react-native-community/slider": "4.5.6",
     "@react-native-picker/picker": "^2.11.0",
@@ -28,6 +29,8 @@
     "memoize-one": "^6.0.0",
     "node-wav": "^0.0.2",
     "opensheetmusicdisplay": "^1.8.9",
+    "pitchfinder": "^2.3.2",
+    "pitchy": "^4.1.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.1",
