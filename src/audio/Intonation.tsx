@@ -3,6 +3,12 @@ import { PitchDetector } from 'pitchy'
 const OCTAVE_OFF_THRESHOLD = 2;
 const SEMITONE_THRESHOLD = 2;
 
+function windowNumPerTs(timestamps: number[], sampleRate: number, hopLength: number): number[] {
+    return timestamps.map(ts => {
+        return Math.floor((ts * sampleRate) / hopLength);
+    })    
+}
+
 function listMedian(numbers: number[]): number | null {
     if (numbers.length === 0) return null;
 
@@ -45,7 +51,7 @@ function calculateF0s(audioSamples: Float32Array, sampleRate: number, winLen: nu
 }
 
 function estimatePitchesAtTimestamps(
-    tsList: number[],
+    timestamps: number[],
     pitches: number[],
     scorePitches: number[],
     sampleRate: number,
@@ -53,23 +59,29 @@ function estimatePitchesAtTimestamps(
     logging: boolean) {
     
     // Convert timestamp -> sample no., sample no. -> window no. using hop len
-    const _windowNums = tsList.map((ts) => Math.floor((ts * sampleRate) / hopLength));
+    const _windowNums = windowNumPerTs(timestamps, sampleRate, hopLength);
+    if (logging) console.log("Window no. per timestamp:", _windowNums)
     
-    const estimatedPitches = []
-    for (let idx = 0; idx < tsList.length; idx++) {
-        const windowNum = _windowNums[idx];
-        const directPitch = pitches[windowNum];
-        const scorePitch = scorePitches[idx];
+    const _aggregateSizes = _windowNums.map((windowNum, idx) => {
+        let aggregateSize = 10;
         
-        let aggregateSize = 10
-        if (idx + 1 < _windowNums.length) {
+        const maxIdx = _windowNums.length - 1;
+        if (idx < maxIdx) {
             const nxtWinNum = _windowNums[idx + 1];
             aggregateSize = Math.floor((nxtWinNum - windowNum) / 2);
         }
-        if (windowNum + aggregateSize > pitches.length) {
+        if (windowNum + aggregateSize > maxIdx) {
             aggregateSize = pitches.length - windowNum;
         }
 
+        return aggregateSize;
+    });
+
+    const pitchEstimates = _windowNums.map((windowNum, idx) => {
+        const directPitch = pitches[windowNum];
+        const scorePitch = scorePitches[idx];
+        const aggregateSize = _aggregateSizes[idx];
+ 
         const rawAggregate = pitches.slice(windowNum, windowNum + aggregateSize)
         let diffAggregate = rawAggregate.map((candidate) => {
             if (isNaN(candidate)) return undefined;
@@ -89,32 +101,31 @@ function estimatePitchesAtTimestamps(
 
         if (logging) {
             console.log(`Pitch #${idx}: Window num: ${windowNum} -> Direct Pitch: ${directPitch}`)
-            console.log(`Median ${diffAggregate}, Aggr ${diffAggregate}`)
+            console.log(`Median ${pitchEstimate}, Aggr ${diffAggregate}`)
+            console.log(`... Aggregate length ${aggregateSize}`)
             console.log(`Score Pitch: `, scorePitches[idx])
-            console.log(`... Aggregate length ${aggregateSize}, Median /${pitchEstimate}`)
         }
 
-        estimatedPitches.push(pitchEstimate);
-    }
+        return pitchEstimate;
+    });
 
-    return estimatedPitches;
+    return pitchEstimates;
 }
 
 export function calculateIntonation(
     audioSamples: Float32Array,
-    csvDataRef,
+    audioTimes: number[],   // warped timestamps, or ref_ts column of csv (for testing)
+    scorePitches: number[], // midi column of csv
     sampleRate: number,
     winLen: number,
     hopLen: number = winLen
 ) {
-    const refTimes = csvDataRef.current.map(r => r.refTime);
-    let refPitches = calculateF0s(audioSamples, sampleRate, winLen, hopLen);
-    refPitches = refPitches.map(frq => hzToMidi(frq));
-    const scorePitches = csvDataRef.current.map(r => r.midi);
+    const audioF0s = calculateF0s(audioSamples, sampleRate, winLen, hopLen);
+    const audioPitches = audioF0s.map(frq => hzToMidi(frq));
     
     return estimatePitchesAtTimestamps(
-        refTimes,
-        refPitches,
+        audioTimes,
+        audioPitches,
         scorePitches,
         sampleRate,
         hopLen,
