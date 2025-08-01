@@ -43,65 +43,13 @@ export default function ScoreDisplay({
       cancelAnimationFrame(animRef.current);
     }
 
-    // Mobile approach
-    // if (Platform.OS !== "web") {
-    //   if (!webviewRef.current) {
-    //     console.error("WebView not initialized.");
-    //     return;
-    //   }
-
-    //   const script = `
-    //     (function() {
-    //       const osd = window.osm;
-    //       const cursor = window.cursor;
-    //       if (!osd.IsReadyToRender()) return;
-
-    //       const measures = osd.GraphicSheet.MeasureList;
-    //       if (!measures.length || !measures[0].length) return;
-    //       const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature.denominator;
-
-    //       // Compute current absolute beats under cursor
-    //       let initialBeats = 0;
-    //       const init = cursor.VoicesUnderCursor(osd.Sheet.Instruments[0]);
-    //       if (init.length && init[0].Notes.length) {
-    //         const len = init[0].Notes[0].Length;
-    //         const num = len.Numerator === 0 ? 1 : len.Numerator;
-    //         initialBeats = (num / len.Denominator) * denom;
-    //       }
-    //       console.log('   initialBeats:', initialBeats.toFixed(3));
-
-    //       const toMove = Math.max(0, ${targetBeats} - initialBeats);
-    //       console.log('   toMove:', toMove.toFixed(3), '(targetBeats - initialBeats)');
-
-    //       let moved = 0;
-
-    //       function stepFn() {
-    //         console.log(' >> stepFn()', { moved, toMove });
-    //         if (moved >= toMove) {
-    //           console.log('reached target beats:', moved.toFixed(3));
-    //           osd.render();
-    //           return;
-    //         }
-    //         cursor.next();
-    //         const cur = cursor.VoicesUnderCursor(osd.Sheet.Instruments[0]);
-    //         let delta = 0;
-    //         if (cur.length && cur[0].Notes.length) {
-    //           const len = cur[0].Notes[0].Length;
-    //           const num = len.Numerator === 0 ? 1 : len.Numerator;
-    //           delta = (num / len.Denominator) * denom;
-    //         }
-    //         console.log('    next note delta:', delta.toFixed(3));
-    //         moved += delta;
-    //         console.log('    moved now:', moved.toFixed(3));
-    //         osd.render();
-    //         setTimeout(stepFn, ${parseInt(speed)});
-    //       }
-    //       stepFn();
-    //     })(); true;
-    //   `;
-    //   webviewRef.current.injectJavaScript(script);
-    //   return;
-    // }
+    // instead of inlining the closure every time, you now do:
+    if (Platform.OS !== 'web') {
+      webviewRef.current?.injectJavaScript(
+        `window.stepCursor(${parseFloat(steps)}); true;`
+      );
+      return;
+    }
 
     // --- WEB branch ---
     if (!osdRef.current!.IsReadyToRender()) {
@@ -140,7 +88,7 @@ export default function ScoreDisplay({
     // Initialize moved beats from React state (current beat position)
     let moved = movedBeats.current + overshootBeats.current;
     overshootBeats.current = 0;
-    console.log("movedBeats + overshootBeats :", moved)
+    // console.log("movedBeats + overshootBeats :", moved)
 
     // Recursive function to advance the cursor step-by-step
     const stepFn = () => {
@@ -160,22 +108,22 @@ export default function ScoreDisplay({
       }
       cursorRef.current!.previous(); 
 
-      if (moved < toMove && toMove < moved + delta){
-        console.log("======================================")
-        console.log("moved :", moved)
-        console.log("tar :", toMove)
-        console.log("next:", moved + delta)
-        console.log("======================================")
-      }
+      // if (moved < toMove && toMove < moved + delta){
+      //   console.log("======================================")
+      //   console.log("moved :", moved)
+      //   console.log("tar :", toMove)
+      //   console.log("next:", moved + delta)
+      //   console.log("======================================")
+      // }
 
 
       // Stop if we've moved enough beats
       if (moved >= toMove) {
-        console.log("moved:" ,moved, ">", toMove) 
+        // console.log("moved:" ,moved, ">", toMove) 
         const leftover = moved - toMove
         overshootBeats.current = leftover;
         movedBeats.current = toMove;
-        console.log("leftover: ", leftover)
+        // console.log("leftover: ", leftover)
         osdRef.current!.render(); // Re-render the music sheet
         return;
       }
@@ -195,7 +143,7 @@ export default function ScoreDisplay({
         const num = len.Numerator === 0 ? 1 : len.Numerator;
         delta = (num / len.Denominator) * denom;
       }else {
-        console.log("No note under cursor.");
+        // console.log("No note under cursor.");
       }
 
       // if (delta + moved > targetBeats) {
@@ -231,53 +179,125 @@ export default function ScoreDisplay({
   }, [steps, speed]);
 
 
-  // Build HTML for native WebView, exposing window.osm & window.cursor for moving cursor logic for mobile when injecting the js script above
-  const buildHtml = (xml: string) => {
+  const buildHtml = (xml: string, defaultZoom = 0.45) => {
     const escaped = xml
-      // Escape every backtick so that embedding this string in a JS template literal
-      // won’t accidentally terminate the literal early.
       .replace(/`/g, "\\`")
-      // Escape every closing </script> tag so that, when injected into our <script> block,
-      // it can’t break out of that block and end our script prematurely.
-      .replace(/<\/script>/g, "<\\/script>"); 
-      return `<!DOCTYPE html>
-                <html>
-                  <head>
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  </head>
-                  <body>
-                    <div id="osmd-container"></div>
-                    <script src="https://unpkg.com/opensheetmusicdisplay@latest/build/opensheetmusicdisplay.min.js"></script>
-                    <script>
-                      (async () => {
-                        const osm = new opensheetmusicdisplay.OpenSheetMusicDisplay(
-                          document.getElementById('osmd-container'),
-                          { autoResize: true, followCursor: true }
-                        );
-                        try {
-                          await osm.load(\`${escaped}\`);
-                          osm.render();
-                          // expose for RN->WebView injection
-                          window.osm = osm;
-                          window.osm.zoom = .45;
-                          window.cursor = osm.cursor;
-                          window.cursor.show();
-                          window.cursor.CursorOptions = {
-                            ...window.cursor.CursorOptions,
-                            follow: true
-                          };
-                          window.ReactNativeWebView.postMessage(JSON.stringify({
-                            type: 'loaded',
-                            time_signature: window.cursor.Iterator.CurrentMeasure.ActiveTimeSignature,
-                            tempo: 100
-                          }));
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      })();
-                    </script>
-                  </body>
-                </html>`;
+      .replace(/<\/script>/g, "<\\/script>");
+
+    return `<!DOCTYPE html>
+  <html>
+    <head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+    <body>
+      <div id="osmd-container"></div>
+      <script src="https://unpkg.com/opensheetmusicdisplay@latest/build/opensheetmusicdisplay.min.js"></script>
+      <script>
+        // 1) State holders for moved / overshoot, and the loop ID
+        window.__movedBeats = 0;
+        window.__overshootBeats = 0;
+        window.__stepLoopId = null;
+
+        (async () => {
+          // 2) Load & render once
+          const osm = new opensheetmusicdisplay.OpenSheetMusicDisplay(
+            document.getElementById('osmd-container'),
+            { autoResize: true, followCursor: true }
+          );
+          await osm.load(\`${escaped}\`);
+          osm.render();
+
+          // 3) Expose osm & cursor
+          window.osm = osm;
+          osm.zoom = ${defaultZoom};
+          window.cursor = osm.cursor;
+          cursor.show();
+          cursor.CursorOptions = { ...cursor.CursorOptions, follow: true };
+
+          // 4) Expose a single stepCursor function
+          window.stepCursor = function(targetBeats) {
+            // Cancel any previous loop
+            if (window.__stepLoopId !== null) {
+              cancelAnimationFrame(window.__stepLoopId);
+            }
+
+            // Web‑version’s readiness check
+            if (!osm.IsReadyToRender()) {
+              console.warn("Please call load() and render() before stepping cursor.");
+              return;
+            }
+
+            const measures = osm.GraphicSheet.MeasureList;
+            if (!measures.length || !measures[0].length) return;
+            const denom = measures[0][0].parentSourceMeasure.ActiveTimeSignature.denominator;
+
+            // Initial‑only beat calc
+            let initialBeats = window.__movedBeats;
+            if (initialBeats === 0) {
+              const init = cursor.VoicesUnderCursor(osm.Sheet.Instruments[0]);
+              if (init.length && init[0].Notes.length) {
+                const len = init[0].Notes[0].Length;
+                const num = len.Numerator === 0 ? 1 : len.Numerator;
+                initialBeats = (num / len.Denominator) * denom;
+              }
+            }
+            window.__movedBeats = initialBeats;
+
+            const toMove = Math.max(0, targetBeats);
+            let moved = window.__movedBeats + window.__overshootBeats;
+            window.__overshootBeats = 0;
+
+            // Step logic exactly as web version
+            function stepFn() {
+              // peek next delta
+              cursor.next();
+              let cur = cursor.VoicesUnderCursor(osm.Sheet.Instruments[0]);
+              let delta = 0;
+              if (cur.length && cur[0].Notes.length) {
+                const len = cur[0].Notes[0].Length;
+                const num = len.Numerator === 0 ? 1 : len.Numerator;
+                delta = (num / len.Denominator) * denom;
+              }
+              cursor.previous();
+
+              // if we’ve already reached the target
+              if (moved >= toMove) {
+                const leftover = moved - toMove;
+                window.__overshootBeats = leftover;
+                window.__movedBeats = toMove;
+                osm.render();
+                return;
+              }
+
+              // actually advance once
+              cursor.next();
+              cur = cursor.VoicesUnderCursor(osm.Sheet.Instruments[0]);
+              delta = 0;
+              if (cur.length && cur[0].Notes.length) {
+                const len = cur[0].Notes[0].Length;
+                const num = len.Numerator === 0 ? 1 : len.Numerator;
+                delta = (num / len.Denominator) * denom;
+              }
+              moved += delta;
+              window.__movedBeats = moved;
+
+              osm.render();
+              // schedule the next frame
+              window.__stepLoopId = requestAnimationFrame(stepFn);
+            }
+
+            // start it
+            window.__stepLoopId = requestAnimationFrame(stepFn);
+          };
+
+          // signal loaded to React Native
+          const ts = cursor.Iterator.CurrentMeasure.ActiveTimeSignature;
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'loaded',
+            time_signature: { numerator: ts.numerator, denominator: ts.denominator }
+          }));
+        })();
+      </script>
+    </body>
+  </html>`;
   };
 
   // Web-only initialization

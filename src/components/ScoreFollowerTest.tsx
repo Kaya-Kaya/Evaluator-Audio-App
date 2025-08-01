@@ -40,12 +40,16 @@ import { dot } from '../audio/FeaturesCENS';
 
 // Hash map - score name -> score's wav file (expo implementation using require)
 const refAssetMap: Record<string, any> = {
-  'air_on_the_g_string': require('../../assets/air_on_the_g_string/baseline/aotgs_solo_ref.wav'),
+  'air_on_the_g_string': require('../../assets/air_on_the_g_string/baseline/instrument_0.wav'),
+  'schumann_melodyVLCduet': require('../../assets/schumann_melodyVLCduet/baseline/instrument_0.wav'),
+  'ode_to_joy': require('../../assets/ode_to_joy/baseline/instrument_0.wav'),
 };
 
 // Hash map - score name -> score's csv file (expo implementation using require)
 const csvAssetMap: Record<string, any> = {
-  'air_on_the_g_string': require('../../assets/air_on_the_g_string/baseline/aotgs_tempo.csv'),
+  'air_on_the_g_string': require('../../assets/air_on_the_g_string/baseline/aotgs_solo_100bpm.csv'),
+  'schumann_melodyVLCduet': require('../../assets/schumann_melodyVLCduet/baseline/schumann_melody_4sec.csv'),
+  'ode_to_joy': require('../../assets/ode_to_joy/baseline/ode_to_joy_300bpm.csv'),
 };
 
 interface ScoreFollowerTestProps {
@@ -117,11 +121,15 @@ export default function ScoreFollowerTest({
       const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
       const refUri = isWeb ? `/${base}/baseline/instrument_0.wav` : Asset.fromModule(refAssetMap[base]).uri; // Path to reference wav file of selected score depending on web or expo go version
 
+      console.log('-- Creating ScoreFollower...');
+
       // Initialize score follower instance (default parameters from ScoreFollower.tsx)
-      followerRef.current = await ScoreFollower.create(refUri, FeaturesCls); 
+      followerRef.current = await ScoreFollower.create(refUri, FeaturesCls);
+      console.log('-- ScoreFollower created');
+ 
       const follower = followerRef.current!; 
       const refFeatures = follower.ref.featuregram;
-      console.log("ref f : ",refFeatures)
+      // console.log("ref f : ",refFeatures)
 
       // Extract and set sample rate and window length from the ScoreFollower instance
       const { sr, winLen } = follower;
@@ -134,55 +142,66 @@ export default function ScoreFollowerTest({
       frameSecRef.current = frameSize / sampleRate; // Duration of each frame in seconds
 
       let buffer: ArrayBuffer; // Define an array buffer
+      console.log('-- Loading live audio buffer...');
 
-      if (isWeb) {
-        buffer = await fetch(liveFile.uri).then(r => r.arrayBuffer()); // Web version of initializing array buffer given live uri 
-      }
-       else {  // Expo go version of initializing array buffer given live uri 
-        const b64 = await FileSystem.readAsStringAsync(liveFile.uri, { encoding: FileSystem.EncodingType.Base64 });
-        const binaryString = atob(b64);
-        const bytes = Uint8Array.from(binaryString, c => c.charCodeAt(0));
-        buffer = bytes.buffer;
-      }
+      buffer = await fetch(liveFile.uri).then(r => r.arrayBuffer()); // Web and mobile version of initializing array buffer given live uri 
+
+      console.log('-- Buffer loaded, byteLength=', buffer.byteLength);
+
+      console.log('-- Decoding WAV buffer...');
 
       const result = await decode(buffer, { symmetric: true }); // Decode the WAV buffer into PCM audio data  - passed in symmetric = TRUE for better PCM samples when compared to the Python version
+
+      console.log('-- Decoded: channels=', result.channelData.length, 'origSR=', result.sampleRate);
+
       let audioData = toMono(result.channelData); // Convert these PCM audio data to mono if needed 
       audioData = resampleAudio(audioData, result.sampleRate, sampleRate) // Resample the resulting audio data if needed
       audioDataRef.current = audioData;
+      console.log('-- Audio data prepared, length=', audioData.length);
+
+      console.log('-- Computing alignment path...');
       pathRef.current = precomputeAlignmentPath(audioData, frameSize, follower); // Compute alignment path 
+
+      
+    console.log('-- Alignment path length=', pathRef.current.length);
 
 
       // Get live features
-      const liveExtractor = new FeaturesCls(
-        sr,
-        winLen,
-        audioData,  
-        winLen     
-      );
-      const liveFeatures = liveExtractor.featuregram;
-      // console.log("live f : ",liveFeatures)
+      // const liveExtractor = new FeaturesCls(
+      //   sr,
+      //   winLen,
+      //   audioData,  
+      //   winLen     
+      // );
+      // const liveFeatures = liveExtractor.featuregram;
+      // // console.log("live f : ",liveFeatures)
       
 
-      // Define distance function for Offline DTW
-      const censDistance = (a: number[], b: number[]) => 1 - dot(a, b);
+      // // Define distance function for Offline DTW
+      // const censDistance = (a: number[], b: number[]) => 1 - dot(a, b);
 
-      // Run Offline DTW given full features
-      const dtw = new DynamicTimeWarping(
-        refFeatures,    // Full ref features
-        liveFeatures,   // Full live features
-        censDistance // Distance function
-      );
-      const rawPath = dtw.getPath() // Get full path after run
-      console.log("raw path: ", rawPath) // Just print to console log for now
+      // // Run Offline DTW given full features
+      // const dtw = new DynamicTimeWarping(
+      //   refFeatures,    // Full ref features
+      //   liveFeatures,   // Full live features
+      //   censDistance // Distance function
+      // );
+      // const rawPath = dtw.getPath() // Get full path after run
+      // console.log("raw path: ", rawPath) // Just print to console log for now
       
 
       // downloadFullPCM(audioDataRef.current)
 
       {
         const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-        const csvUri = isWeb ? `/${base}/baseline/ode_to_joy_300bpm_NEW.csv` : Asset.fromModule(csvAssetMap[base]).uri; // Path the CSV given score name (web and alternative expo go version)
+        console.log('-- precompute CSV block: score=', score, '→ base=', base);
+        const csvUri = isWeb ? `/${base}/baseline/aotgs_solo_100bpm.csv` : Asset.fromModule(csvAssetMap[base]).uri; // Path the CSV given score name (web and alternative expo go version)
+        console.log('-- CSV URI =', csvUri);
 
+        console.log('-- Calling loadCsvInfo(csvUri, isWeb=', isWeb, ')…');
         const rows = await loadCsvInfo(csvUri, isWeb); // Obtain rarray of csv rows (info on each note of score such as beat value, ref time when note is played, etc.)
+        console.log('-- Loaded CSV rows count =', rows.length);
+
         csvDataRef.current = rows; // Save the parsed CSV rows for downstream use
         
         const stepSize  = frameSecRef.current; // Duration of each frame in seconds
