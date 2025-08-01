@@ -113,7 +113,8 @@ export default function ScoreFollowerTest({
 
   const runFollower = async () => {
     if (!score) return; // Do nothing if no score is selected 
-    setProcessing(true); // Turn on processing boolean state
+    dispatch({ type: 'start/stop',});
+    dispatch({type: 'toggle_loading_performance'})
     setPerformanceComplete(false);
 
     try {
@@ -242,13 +243,14 @@ export default function ScoreFollowerTest({
 
         // Handle end of playback
         if (status.didJustFinish) {
-          setProcessing(false);
+          dispatch({ type: 'start/stop',});
           setPerformanceComplete(true);
           soundRef.current?.setOnPlaybackStatusUpdate(null);
         }
       };
 
       const soundSource = { uri: liveFile.uri };
+      dispatch({type: 'toggle_loading_performance'})
 
       // Create and load the sound object from the live audio URI
       const { sound } = await Audio.Sound.createAsync(
@@ -264,7 +266,7 @@ export default function ScoreFollowerTest({
 
     } catch (err) {
       console.error('ScoreFollower Error:', err);
-      setProcessing(false);
+      dispatch({ type: 'start/stop',});
     }
   };
 
@@ -286,14 +288,14 @@ export default function ScoreFollowerTest({
             type="file"
             accept=".wav"
             style={styles.hiddenInput}
-            disabled={processing}
+            disabled={state.playing}
             onChange={onWebChange}
           />
           {/* Visable web file picker - actual button shown*/}
           <TouchableOpacity
-            style={[styles.fileButton, processing && styles.disabledButton]}
+            style={[styles.fileButton, state.playing && styles.disabledButton]}
             onPress={() => inputRef.current?.click()}
-            disabled={processing}
+            disabled={state.playing}
           >
             <Text style={styles.buttonText}>
               {liveFile ? `Selected: ${liveFile.name}` : 'Upload a Performance'} 
@@ -317,9 +319,9 @@ export default function ScoreFollowerTest({
       ): ( 
         // Render wav upload button for expo go version 
         <TouchableOpacity
-          style={[styles.fileButton, processing && styles.disabledButton]}
+          style={[styles.fileButton, state.playing && styles.disabledButton]}
           onPress={onMobilePress}
-          disabled={processing}
+          disabled={state.playing}
         >
           <Text style={styles.buttonText}>
             {liveFile ? `Selected: ${liveFile.name}` : 'Select WAV File'}
@@ -328,12 +330,12 @@ export default function ScoreFollowerTest({
       )}
 
       <TouchableOpacity
-        style={[styles.button, (processing || !liveFile) && styles.disabledButton]}
+        style={[styles.button, (state.score == "" || state.playing|| !liveFile) && styles.disabledButton]}
         onPress={runFollower}
-        disabled={processing || !liveFile}
+        disabled={state.score == "" || state.playing || !liveFile}
       >
         <Text style={styles.buttonText}>
-          {processing ? 'Running...' : 'Play'}
+          {state.playing? 'Running...' : 'Play'}
         </Text>
         
       </TouchableOpacity>

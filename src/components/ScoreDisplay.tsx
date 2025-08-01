@@ -6,6 +6,8 @@ import scoresData from "../musicxml/scores"; // Local mapping of score filenames
 import { WebView } from "react-native-webview";
 import AudioGenerator from "../audio/AudioGenerator";
 import React from "react";
+import { ActivityIndicator } from "react-native";
+
 export default function ScoreDisplay({
   state,
   dispatch,
@@ -556,6 +558,12 @@ const onMessage = (event: any) => {
           container for sheet music{" "}
           <Icon name="music" size={20} color="#2C3E50" />
         </Text> */}
+        {state.loadingPerformance && ( // Loading overlay
+          <View style={styles.overlay}>
+            <ActivityIndicator size="large" />
+            <Text style={styles.loadingText}>Loading…</Text>
+          </View>
+        )}
       </ScrollView>
     </>
   );
@@ -577,5 +585,27 @@ const styles = StyleSheet.create({
     fontSize: 20,
     textAlign: "center",
     color: "#2C3E50"
+  },
+
+  sheetWrapper: {
+    position: "relative", // to contain overlay
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255,255,255,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+    padding: 16,
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 16,
+    color: "#333",
+    fontWeight: 700
   }
 });

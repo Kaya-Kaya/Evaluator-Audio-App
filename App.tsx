@@ -57,7 +57,8 @@ export default function App() {
       estimatedBeat: null as number | null,
       estimatedBeatError: null as string | null,
       bottomAudioUri: null as string | null,  //playback audio uri
-      beatsPerMeasure: 0
+      beatsPerMeasure: 0, 
+      loadingPerformance: false
     },
   );
 

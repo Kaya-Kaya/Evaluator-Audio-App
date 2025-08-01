@@ -143,6 +143,11 @@ const reducer_function = (state: any, action: any) => {
           ...state,
           bottomAudioUri: action.bottomAudioUri as string,
         };
+      case "toggle_loading_performance":
+        return {
+          ...state,
+          loadingPerformance: !state.loadingPerformance,
+        };
         
     default: // If no valid type, return state, otherwise the function returns null and the state is gone.
       return state;

@@ -19,7 +19,7 @@ export function Score_Select({
   button_format,
   button_text_style
 }: {
-  state: { score: string; scores: string[], referenceAudioUri: string | null};
+  state: any;
   dispatch: Function;
   textStyle: Animated.AnimatedInterpolation<string | number>;
   borderStyle: Animated.AnimatedInterpolation<string | number>
@@ -175,10 +175,16 @@ const WebFileInput = () => {
   return (
     <View>
       <Animated.Text style={[{color: textStyle}, styles.text]}>Select a score:</Animated.Text>
-      <View style={styles.input}>
+      <View style={styles.input} pointerEvents={state.isplaying ? "none" : "auto"}>
         <RNPickerSelect
+          disabled={state.isplaying}
+
           key={state.scores.length} //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
           onValueChange={(value) => {
+            if (state.playing) {
+              console.log("Score change blocked because playback is active.");
+              return; // ignore while playing
+            }
             console.log("The dispatch function is being sent.");
             console.log("val: ", value)
 
