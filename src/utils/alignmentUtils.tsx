@@ -83,6 +83,8 @@ export function precomputeAlignmentPath(
   follower: ScoreFollower
 ): [number, number][] {
   const totalFrames = Math.ceil(audioData.length / frameSize);
+  console.log(`precomputeAlignmentPath: totalFrames = ${totalFrames}, frameSize = ${frameSize}`);
+
   const path: [number, number][] = [];
 
   for (let i = 0; i < totalFrames; i++) {
@@ -96,13 +98,19 @@ export function precomputeAlignmentPath(
       frame = pad;
     }
 
+    console.log(`    Calling follower.step() on frame ${i}`);
+
     // Step the follower with a plain number[]
-    follower.step(Array.from(frame));
+     const timeSec = follower.step(Array.from(frame));
+    console.log(`    → step returned timeSec = ${timeSec.toFixed(3)}s`);
 
     // Capture the last updated warping step
     const last = follower.path[follower.path.length - 1] as [number, number];
+    console.log(`    Latest path entry [refIdx, liveIdx] = [${last[0]}, ${last[1]}]`);
+
     path.push(last);
   }
+  console.log(`precomputeAlignmentPath: completed, path length = ${path.length}`);
 
   return path;
 }

@@ -42,12 +42,16 @@ export class ScoreFollower {
     maxRunCount = 3,
     diagWeight = 0.75,
     sr = 44100,
-    winLen = 4096,
+    winLen = 4096, 
     hopLen = winLen,
   ) {
     const instance = new ScoreFollower(FeaturesClass, sr, winLen);
     instance.ref = await instance.loadRefFromAudio(refUri, FeaturesClass, sr, winLen, hopLen);
+    console.log('-- Reference loaded — initializing OTW with bigC=', bigC, 'maxRunCount=', maxRunCount);
+
     instance.otw = new OnlineTimeWarping(instance.ref, bigC, maxRunCount, diagWeight);
+    console.log('ScoreFollower.create(): done');
+
     return instance;
   }
 
@@ -74,24 +78,39 @@ export class ScoreFollower {
     winLen: number,
     hopLen: number = winLen
   ) {
+
+    console.log('ScoreFollower.loadRefFromAudio(): fetching', refUri);
+
     // 1. Fetch the WAV file as ArrayBuffer
     const res = await fetch(refUri);
     if (!res.ok) {
         throw new Error(`Failed to fetch ${refUri}: ${res.status} ${res.statusText}`);
     }
+    
     const arrayBuffer = await res.arrayBuffer();
 
+    console.log('-- Fetched buffer byteLength=', arrayBuffer.byteLength);
+
+    console.log('-- Decoding WAV…');
     // 2. Decode WAV buffer
     const result = wav.decode(arrayBuffer);
+    console.log('-- Decoded channels=', result.channelData.length, 'origSR=', result.sampleRate);
+    console.log('-- Converting to mono…');
 
     // 3. Convert to Mono if needed 
     let audioData = toMono(result.channelData);
+    console.log(`-- Resampling from ${result.sampleRate} → ${sr}…`);
 
     // 4. Resample if needed 
     audioData = resampleAudio(audioData, result.sampleRate, sr)
+    console.log('-- Resampled data length=', audioData.length);
 
-    // 5. Compute and return 
-    return new FeaturesClass(sr, winLen, audioData, hopLen);
+    console.log('-- Building featuregram…');
+
+    const features = new FeaturesClass(sr, winLen, audioData, hopLen);
+    console.log('-- Featuregram length=', features.featuregram.length);
+
+    return features;
   }
 
   /**

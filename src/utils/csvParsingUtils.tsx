@@ -51,9 +51,8 @@ export async function loadCsvInfo(
   if (isWeb) {
     text = await fetch(csvUri).then(r => r.text());
   } else {
-    text = await FileSystem.readAsStringAsync(csvUri, {
-      encoding: FileSystem.EncodingType.UTF8,
-    });
+    text = await fetch(csvUri).then(r => r.text());
+
   }
 
   return parseCsv(text);
