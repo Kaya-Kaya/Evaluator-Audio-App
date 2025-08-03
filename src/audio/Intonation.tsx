@@ -23,8 +23,8 @@ function listMedian(numbers: number[]): number | null {
 }
 
 function hzToMidi(frequency: number): number {
-    if (frequency <= 0) {
-        throw new Error("Frequency must be a positive number.");
+    if (frequency < 0) {
+        throw new Error(`Frequency must be a nonnegative number: ${frequency}`);
     }
 
     const midi = 69 + 12 * Math.log2(frequency / 440);

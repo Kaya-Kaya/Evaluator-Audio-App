@@ -5,6 +5,7 @@ import * as FileSystem from 'expo-file-system';
  */
 export interface CSVRow {
   beat: number;         // 1-based beat index
+  midi: number;         // Score MIDI pitch of current row's note
   refTime: number;      // Reference time (s) for this beat in the baseline performance
   liveTime: number;     // Actual live performance time (s) recorded for this beat
   predictedTime: number; // Placeholder for predicted live time (to be filled later)
@@ -27,11 +28,12 @@ export function parseCsv(text: string): CSVRow[] {
   return dataLines.map(line => {
     const cols = line.split(',');
     const beat = parseFloat(cols[0]) + 1;        // convert 0-based to 1-based beat index
+    const midi = parseFloat(cols[4]);
     const refTime = parseFloat(cols[5]);         // reference timestamp in seconds
     const liveTime = parseFloat(cols[6]);        // live performance timestamp in seconds
     const predictedTime = 0;                     // will be filled in after alignment
 
-    return { beat, refTime, liveTime, predictedTime };
+    return { beat, midi, refTime, liveTime, predictedTime };
   });
 }
 

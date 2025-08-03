@@ -34,9 +34,10 @@ import TempoGraph from './TempoGraph';
 import { resampleAudio, toMono } from '../utils/audioUtils';
 import { calculateWarpedTimes, precomputeAlignmentPath } from '../utils/alignmentUtils';
 import { LiveFile, parseWebWavFile, pickMobileWavFile } from '../utils/fileSelectorUtils';
-import { loadCsvInfo } from '../utils/csvParsingUtils';
+import { loadCsvInfo, CSVRow } from '../utils/csvParsingUtils';
 import DynamicTimeWarping from "dynamic-time-warping-ts";
 import { dot } from '../audio/FeaturesCENS';
+import { calculateIntonation } from '../audio/Intonation'
 
 // Hash map - score name -> score's wav file (expo implementation using require)
 const refAssetMap: Record<string, any> = {
@@ -58,13 +59,6 @@ interface ScoreFollowerTestProps {
   bpm?: number; // Optional BPM number,
   FeaturesCls?: FeaturesConstructor<any>;
   state: any;
-}
-
-interface CSVRow { // Interface used to store CSV info 
-  beat: number; // Start beat value of current row's note
-  refTime: number; // Reference audio timestamp of when current row's note will be played
-  liveTime: number; // Live audio timestamp of when current row's note will be played - used for testing purposes only
-  predictedTime: number; // Estimated live audio timestamp of when current row's note will be played
 }
 
 export default function ScoreFollowerTest({
@@ -245,6 +239,19 @@ export default function ScoreFollowerTest({
           setProcessing(false);
           setPerformanceComplete(true);
           soundRef.current?.setOnPlaybackStatusUpdate(null);
+
+          const audioSamples = audioData; // use "live" for testing
+          const scorePitches = csvDataRef.current.map(r => r.midi)
+          const audioTimes = csvDataRef.current.map(r => r.liveTime);
+          const intonation = calculateIntonation(
+            audioSamples,
+            scorePitches,
+            audioTimes,
+            sampleRate,
+            1024,
+            512
+          );
+          console.log(intonation)
         }
       };
 
