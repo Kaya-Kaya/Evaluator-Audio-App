@@ -23,12 +23,12 @@ function listMedian(numbers: number[]): number | null {
 }
 
 function hzToMidi(frequency: number): number {
-  if (frequency <= 0) {
-    throw new Error("Frequency must be a positive number.");
-  }
+    if (frequency <= 0) {
+        throw new Error("Frequency must be a positive number.");
+    }
 
-  const midi = 69 + 12 * Math.log2(frequency / 440);
-  return midi;
+    const midi = 69 + 12 * Math.log2(frequency / 440);
+    return midi;
 }
 
 function calculateF0s(audioSamples: Float32Array, sampleRate: number, winLen: number, hopLen: number = winLen) {
@@ -70,8 +70,14 @@ function estimatePitchesAtTimestamps(
             const nxtWinNum = _windowNums[idx + 1];
             aggregateSize = Math.floor((nxtWinNum - windowNum) / 2);
         }
-        if (windowNum + aggregateSize > maxIdx) {
-            aggregateSize = pitches.length - windowNum;
+        if (windowNum + aggregateSize >= pitches.length) {
+            aggregateSize = (pitches.length - windowNum) - 1;
+        }
+
+        if (aggregateSize < 0) {
+            console.log("Invalid aggregate size; timestamps beyond audio length?")
+            console.log(aggregateSize, windowNum, _windowNums[idx], _windowNums[idx + 1]);
+            console.log(pitches.length, windowNum);
         }
 
         return aggregateSize;
@@ -93,7 +99,7 @@ function estimatePitchesAtTimestamps(
             }
 
             if (diff > SEMITONE_THRESHOLD) return undefined;   
-            diffAggregate.push(diff);
+            return diff;
         });
 
         diffAggregate = diffAggregate.filter(element => element !== undefined);
@@ -101,7 +107,7 @@ function estimatePitchesAtTimestamps(
 
         if (logging) {
             console.log(`Pitch #${idx}: Window num: ${windowNum} -> Direct Pitch: ${directPitch}`)
-            console.log(`Median ${pitchEstimate}, Aggr ${diffAggregate}`)
+            // console.log(`Median ${pitchEstimate}, Aggr ${diffAggregate}`)
             console.log(`... Aggregate length ${aggregateSize}`)
             console.log(`Score Pitch: `, scorePitches[idx])
         }
@@ -114,15 +120,15 @@ function estimatePitchesAtTimestamps(
 
 export function calculateIntonation(
     audioSamples: Float32Array,
-    audioTimes: number[],   // warped timestamps, or ref_ts column of csv (for testing)
     scorePitches: number[], // midi column of csv
+    audioTimes: number[],   // warped timestamps, or ref_ts column of csv (for testing)
     sampleRate: number,
     winLen: number,
     hopLen: number = winLen
 ) {
     const audioF0s = calculateF0s(audioSamples, sampleRate, winLen, hopLen);
     const audioPitches = audioF0s.map(frq => hzToMidi(frq));
-    
+
     return estimatePitchesAtTimestamps(
         audioTimes,
         audioPitches,
