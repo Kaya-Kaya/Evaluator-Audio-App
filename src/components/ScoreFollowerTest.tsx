@@ -274,34 +274,52 @@ export default function ScoreFollowerTest({
     <View>
       {bpm ? (
         <Text style={styles.tempoText}>Reference Tempo: {bpm} BPM</Text>
-      ):
-      (
-        <></>
-      )
-      }
-      {/* Render wav upload button for web version */}
-      {Platform.OS === 'web' ? (
-        <>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 4 }}>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".wav"
-            style={styles.hiddenInput}
-            disabled={state.playing}
-            onChange={onWebChange}
-          />
-          {/* Visable web file picker - actual button shown*/}
-          <TouchableOpacity
-            style={[styles.fileButton, state.playing && styles.disabledButton]}
-            onPress={() => inputRef.current?.click()}
-            disabled={state.playing}
-          >
-            <Text style={styles.buttonText}>
-              {liveFile ? `Selected: ${liveFile.name}` : 'Upload a Performance'} 
-            </Text>
-          </TouchableOpacity>
+      ) : null}
 
+      <View style={styles.row}>
+        <View style={styles.pickerContainer}>
+          {Platform.OS === 'web' ? (
+            <>
+              <input
+                ref={inputRef}
+                type="file"
+                accept=".wav"
+                style={styles.hiddenInput}
+                disabled={state.playing}
+                onChange={onWebChange}
+              />
+              <TouchableOpacity
+                style={[styles.fileButton, state.playing && styles.disabledButton]}
+                onPress={() => inputRef.current?.click()}
+                disabled={state.playing}
+              >
+                <Text
+                  style={styles.buttonText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {liveFile ? `Selected: ${liveFile.name}` : 'Upload a Performance'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity
+              style={[styles.fileButton, state.playing && styles.disabledButton]}
+              onPress={onMobilePress}
+              disabled={state.playing}
+            >
+              <Text
+                style={styles.buttonText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {liveFile ? `Selected: ${liveFile.name}` : 'Select WAV File'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.graphContainer}>
           <TempoGraph
             refTempo={bpm}
             beatsPerMeasure={state.beatsPerMeasure}
@@ -310,34 +328,18 @@ export default function ScoreFollowerTest({
             disabled={!performanceComplete || liveFile == null}
             frameSize={frameSize}
             sampleRate={sampleRate}
-            
           />
         </View>
-          
-        </>
-        
-      ): ( 
-        // Render wav upload button for expo go version 
-        <TouchableOpacity
-          style={[styles.fileButton, state.playing && styles.disabledButton]}
-          onPress={onMobilePress}
-          disabled={state.playing}
-        >
-          <Text style={styles.buttonText}>
-            {liveFile ? `Selected: ${liveFile.name}` : 'Select WAV File'}
-          </Text>
-        </TouchableOpacity>
-      )}
+      </View>
 
       <TouchableOpacity
-        style={[styles.button, (state.score == "" || state.playing|| !liveFile) && styles.disabledButton]}
+        style={[styles.button, (state.score === "" || state.playing || !liveFile) && styles.disabledButton]}
         onPress={runFollower}
-        disabled={state.score == "" || state.playing || !liveFile}
+        disabled={state.score === "" || state.playing || !liveFile}
       >
         <Text style={styles.buttonText}>
-          {state.playing? 'Running...' : 'Play'}
+          {state.playing ? 'Running...' : 'Play'}
         </Text>
-        
       </TouchableOpacity>
     </View>
   );
@@ -381,11 +383,27 @@ const styles = StyleSheet.create({
    hiddenInput: {
     display: 'none',
   },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 4,
+  },
+  pickerContainer: {
+    flex: 1,
+    marginRight: 8,
+    minWidth: 0, // allow shrinking so text can ellipsize
+  },
+  graphContainer: {
+    flexShrink: 0, // keep graph its intrinsic size
+  },
   fileButton: {
     padding: 12,
     backgroundColor: '#2C3E50',
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 8,
+    // optional hard cap to be safer:
+    maxWidth: 220,
   },
 });

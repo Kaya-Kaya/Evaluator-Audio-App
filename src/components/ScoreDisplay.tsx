@@ -290,11 +290,41 @@ export default function ScoreDisplay({
             window.__stepLoopId = requestAnimationFrame(stepFn);
           };
 
-          // signal loaded to React Native
           const ts = cursor.Iterator.CurrentMeasure.ActiveTimeSignature;
+
+          // get raw xml
+          const rawXML = ${JSON.stringify(escaped)};
+
+          // extract ref tempo given xml
+          function extractTempoFromXML(xmlString) {
+            try {
+              const parser = new DOMParser();
+              const xmlDoc = parser.parseFromString(xmlString, "application/xml");
+
+              const sound = xmlDoc.querySelector("sound[tempo]");
+              if (sound?.getAttribute("tempo")) {
+                return parseFloat(sound.getAttribute("tempo"));
+              }
+
+              const perMin = xmlDoc.querySelector("metronome > per-minute");
+              if (perMin?.textContent) {
+                return parseFloat(perMin.textContent);
+              }
+
+              return null;
+            } catch (e) {
+              console.warn("Tempo extraction failed:", e);
+              return null;
+            }
+          }
+
+          const tempo = extractTempoFromXML(rawXML); // call helper function to get ref tempo 
+
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'loaded',
-            time_signature: { numerator: ts.numerator, denominator: ts.denominator }
+            time_signature: { numerator: ts.numerator, denominator: ts.denominator },
+            beatsPerMeasure: ts.numerator,
+            tempo: tempo
           }));
         })();
       </script>
@@ -410,7 +440,9 @@ const onMessage = (event: any) => {
       dispatch({
         type: 'update_piece_info',
         time_signature: data.time_signature,
-        tempo: data.tempo,
+        tempo: data.tempo, // Update ref tempo in global state
+        beatsPerMeasure: data.beatsPerMeasure, // Update beats per measure in global state
+
       });
     }
   } catch (e) {

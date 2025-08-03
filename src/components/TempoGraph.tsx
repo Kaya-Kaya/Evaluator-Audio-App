@@ -290,9 +290,8 @@ const styles = StyleSheet.create({
   },
   yAxisLabel: {
     transform: [{ rotate: '-90deg' }],
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
-    marginRight: 6,
   },
   chart: {
     borderRadius: 12,
@@ -306,7 +305,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   xAxisLabel: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '700',
     textAlign: 'center',
     marginTop: 8,
