@@ -215,6 +215,19 @@ export default function ScoreFollowerTest({
         }));
 
         nextIndexRef.current = 0;
+
+        const liveAudioSamples = audioData; // use "live" for testing
+        const scorePitches = csvDataRef.current.map(r => r.midi)
+        const liveAudioTimes = csvDataRef.current.map(r => r.predictedTime);
+        const intonation = calculateIntonation(
+          liveAudioSamples,
+          scorePitches,
+          liveAudioTimes,
+          sampleRate,
+          1024,
+          512,
+        );
+        console.log(intonation);
       }
       // Show full path
       console.log(pathRef.current)
@@ -239,19 +252,6 @@ export default function ScoreFollowerTest({
           setProcessing(false);
           setPerformanceComplete(true);
           soundRef.current?.setOnPlaybackStatusUpdate(null);
-
-          const audioSamples = audioData; // use "live" for testing
-          const scorePitches = csvDataRef.current.map(r => r.midi)
-          const audioTimes = csvDataRef.current.map(r => r.liveTime);
-          const intonation = calculateIntonation(
-            audioSamples,
-            scorePitches,
-            audioTimes,
-            sampleRate,
-            1024,
-            512
-          );
-          console.log(intonation)
         }
       };
 

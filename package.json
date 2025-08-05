@@ -23,6 +23,7 @@
     "expo-document-picker": "~13.1.5",
     "expo-file-system": "~18.1.8",
     "expo-status-bar": "~2.2.3",
+    "fast-xml-parser": "^5.2.5",
     "fft-js": "^0.0.12",
     "fft.js": "^4.0.4",
     "memoize-one": "^6.0.0",
