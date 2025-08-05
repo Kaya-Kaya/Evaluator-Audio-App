@@ -62,6 +62,7 @@ const reducer_function = (state: any, action: any) => {
           time_signature: action.time_signature,
           score_tempo: action.tempo as number,
           tempo: action.tempo as number,
+          beatsPerMeasure: action.beatsPerMeasure,
         },
       };
     case "new_session":
@@ -141,6 +142,11 @@ const reducer_function = (state: any, action: any) => {
         return {
           ...state,
           bottomAudioUri: action.bottomAudioUri as string,
+        };
+      case "toggle_loading_performance":
+        return {
+          ...state,
+          loadingPerformance: !state.loadingPerformance,
         };
         
     default: // If no valid type, return state, otherwise the function returns null and the state is gone.

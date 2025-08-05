@@ -56,8 +56,9 @@ export default function App() {
       referenceAudioUri: null as string | null, // reference to score's top voice audio
       estimatedBeat: null as number | null,
       estimatedBeatError: null as string | null,
-      bottomAudioUri:   null as string | null,  //playback audio uri
-
+      bottomAudioUri: null as string | null,  //playback audio uri
+      beatsPerMeasure: 0, 
+      loadingPerformance: false
     },
   );
 
@@ -372,15 +373,15 @@ export default function App() {
           Evaluator
         </Text>          
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <TouchableOpacity onPress={() => setStarted(!started)}>
+            <TouchableOpacity disabled={true} onPress={() => setStarted(!started)}>
               <FontAwesome
                 name={started ? 'microphone' : 'microphone-slash'}
                 size={isSmallScreen ? 15 : 30}
-                color="white"
+                color="grey"
               />
             </TouchableOpacity>
-            <TouchableOpacity onPress={toggleTheme}>
-              <Icon name={theme === 'light' ? 'sun' : 'moon'} size={isSmallScreen? 15: 30} color="white" />
+            <TouchableOpacity disabled={true} onPress={toggleTheme}>
+              <Icon name={theme === 'light' ? 'sun' : 'moon'} size={isSmallScreen? 15: 30}  color="grey" />
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -435,6 +436,7 @@ export default function App() {
               score={state.score}
               dispatch={dispatch}
               bpm={state.tempo}
+              state={state}
             />
             </Animated.View>
             

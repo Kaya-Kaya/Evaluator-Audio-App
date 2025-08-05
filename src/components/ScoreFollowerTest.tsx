@@ -1,3 +1,25 @@
+// # The MIT License (MIT)
+
+// Copyright (c) 2016 PART <info@gordonlesti.com>, <https://fheyen.github.io/>
+
+// > Permission is hereby granted, free of charge, to any person obtaining a copy
+// > of this software and associated documentation files (the "Software"), to deal
+// > in the Software without restriction, including without limitation the rights
+// > to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// > copies of the Software, and to permit persons to whom the Software is
+// > furnished to do so, subject to the following conditions:
+// >
+// > The above copyright notice and this permission notice shall be included in
+// > all copies or substantial portions of the Software.
+// >
+// > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// > IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// > FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// > AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// > LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// > OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// > THE SOFTWARE.
+
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Audio, AVPlaybackStatus } from 'expo-av';
@@ -5,12 +27,37 @@ import { decode } from 'wav-decoder';
 import { ScoreFollower } from '../audio/ScoreFollower';
 import { CENSFeatures } from '../audio/FeaturesCENS';
 import { FeaturesConstructor } from '../audio/Features';
+import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import { Asset } from 'expo-asset';
+import TempoGraph from './TempoGraph';
+import { resampleAudio, toMono } from '../utils/audioUtils';
+import { calculateWarpedTimes, precomputeAlignmentPath } from '../utils/alignmentUtils';
+import { LiveFile, parseWebWavFile, pickMobileWavFile } from '../utils/fileSelectorUtils';
+import { loadCsvInfo } from '../utils/csvParsingUtils';
+import DynamicTimeWarping from "dynamic-time-warping-ts";
+import { dot } from '../audio/FeaturesCENS';
+
+// Hash map - score name -> score's wav file (expo implementation using require)
+const refAssetMap: Record<string, any> = {
+  'air_on_the_g_string': require('../../assets/air_on_the_g_string/baseline/instrument_0.wav'),
+  'schumann_melodyVLCduet': require('../../assets/schumann_melodyVLCduet/baseline/instrument_0.wav'),
+  'ode_to_joy': require('../../assets/ode_to_joy/baseline/instrument_0.wav'),
+};
+
+// Hash map - score name -> score's csv file (expo implementation using require)
+const csvAssetMap: Record<string, any> = {
+  'air_on_the_g_string': require('../../assets/air_on_the_g_string/baseline/aotgs_solo_100bpm.csv'),
+  'schumann_melodyVLCduet': require('../../assets/schumann_melodyVLCduet/baseline/schumann_melody_4sec.csv'),
+  'ode_to_joy': require('../../assets/ode_to_joy/baseline/ode_to_joy_300bpm.csv'),
+};
 
 interface ScoreFollowerTestProps {
   score: string; // Selected score name
   dispatch: (action: { type: string; payload?: any }) => void; // Dispatch function used to update global state
   bpm?: number; // Optional BPM number,
   FeaturesCls?: FeaturesConstructor<any>;
+  state: any;
 }
 
 interface CSVRow { // Interface used to store CSV info 
@@ -25,19 +72,24 @@ export default function ScoreFollowerTest({
   dispatch,
   bpm = 100, // Default BPM if not provided in props
   FeaturesCls = CENSFeatures,
+  state
 }: ScoreFollowerTestProps) {
-  const [processing, setProcessing] = useState(false); // Boolean for if score follower is running
-  const [liveFile, setLiveFile] = useState<File | null>(null); // Local state for storing liveFile
-  const nextIndexRef = useRef<number>(0);  // Track next CSV index to dispatch
 
+  const [processing, setProcessing] = useState(false); // Boolean for if score follower is running
+  const [liveFile, setLiveFile] = useState<LiveFile | null>(null);
+  const nextIndexRef = useRef<number>(0);  // Track next CSV index to dispatch
   const soundRef = useRef<Audio.Sound | null>(null); // Reference to Audio Component
   const followerRef = useRef<ScoreFollower | null>(null); // Reference to score follower instance
   const audioDataRef = useRef<Float32Array>(new Float32Array()); // Reference to decoded audio sample data
-  const lastFrameRef = useRef<number>(-1); // Reference to last frame that was processed
   const pathRef = useRef<Array<[number, number]>>([]); // Reference to alignment path
   const inputRef = useRef<HTMLInputElement>(null); // Reference to the file select HTML element 
-  const frameSecRef = useRef<number>(0);
-  const csvDataRef = useRef<CSVRow[]>([]);
+  const frameSecRef = useRef<number>(0); // Reference to duration of each frame in seconds
+  const csvDataRef = useRef<CSVRow[]>([]); // Array that contains CSV rows (CSV row == info on a note in a selected score)
+  const [warpingPath, setWarpingPath] = useState<[number, number][]>([]); // State to store warping path when computed 
+  const[frameSize, setFrameSize] = useState<number>(0); // State to store frame size of score follower 
+  const[sampleRate, setSampleRate] = useState<number>(0); // State to store sample rate of score follower
+  const [performanceComplete, setPerformanceComplete] = useState(false); // State to determine if plackback of a score is finished or not 
+  const isWeb = Platform.OS === 'web'; // Boolean indicating if user is on website version or not
 
   // Unload the sound when the component unmounts to free up memory
   useEffect(() => {
@@ -48,132 +100,111 @@ export default function ScoreFollowerTest({
     };
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { // Web handle file change function
-    const file = e.target.files?.[0] ?? null;
-    setLiveFile(file && file.name.toLowerCase().endsWith('.wav') ? file : null);
-  };
-
-  // Given warped path and an array of timestamps of when each note is played in the reference audio, it will return array of ESTIMATED timestamps of when each note is played in the live audio
-  const calculateWarpedTimes = (
-    warpingPath: number[][],
-    stepSize: number,
-    refTimes: number[], 
-  ): number[] => {
-    const warpedTimes: number[] = [];
-
-    // Apply step size to both axes of the warping path
-    const pathTimes = warpingPath.map(([refIdx, liveIdx]) => [refIdx * stepSize, liveIdx * stepSize] as [number, number]);
-    const refPathTimes = pathTimes.map(pt => pt[0]);
-    const livePathTimes = pathTimes.map(pt => pt[1]);
-
-    for (const queryTime of refTimes) {
-      // Compute diffs from every refPathTime
-      const diffs = refPathTimes.map(t => t - queryTime);
-      // Find index of the minimum absolute diff
-      let idx = 0;
-      let minAbs = Math.abs(diffs[0]);
-      for (let i = 1; i < diffs.length; i++) {
-        const absDi = Math.abs(diffs[i]);
-        if (absDi < minAbs) {
-          minAbs = absDi;
-          idx = i;
-        }
-      }
-
-      // Choose a pair of points to interpolate between
-      let leftIdx: number, rightIdx: number;
-      if (diffs[idx] >= 0 && idx > 0) {
-        leftIdx = idx - 1;
-        rightIdx = idx;
-      } else if (idx + 1 < livePathTimes.length) {
-        leftIdx = idx;
-        rightIdx = idx + 1;
-      } else {
-        leftIdx = rightIdx = idx;
-      }
-
-      // If no interpolation needed, just take the point
-      if (leftIdx === rightIdx) {
-        warpedTimes.push(livePathTimes[leftIdx]);
-        continue;
-      }
-
-      // Linear interpolation fraction along the ref‐path segment
-      const queryRefOffset = queryTime - refPathTimes[leftIdx];  // ≥ 0
-      const queryOffsetNorm = queryRefOffset === 0
-        ? 0
-        : queryRefOffset / stepSize;
-
-      // Project that fraction into the live‐path segment
-      const liveMaxOffset = livePathTimes[rightIdx] - livePathTimes[leftIdx];
-      const queryOffsetLive = liveMaxOffset * queryOffsetNorm;
-
-      warpedTimes.push(livePathTimes[leftIdx] + queryOffsetLive);
-    }
-
-    return warpedTimes;
+  // Web versin of wav file upload 
+  function onWebChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = parseWebWavFile(e);
+    setLiveFile(file);
   }
-
+  // Mobile version of wav file upload using DocumentPicker
+  async function onMobilePress() {
+    const file = await pickMobileWavFile();
+    setLiveFile(file);
+  }
 
   const runFollower = async () => {
     if (!score) return; // Do nothing if no score is selected 
-    setProcessing(true); // Turn on processing boolean state
+    dispatch({ type: 'start/stop',});
+    dispatch({type: 'toggle_loading_performance'})
+    setPerformanceComplete(false);
 
     try {
-      const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-      const refUri = `/${base}/baseline/instrument_0.wav`; // Path to reference wav file of selected score 
-      followerRef.current = await ScoreFollower.create(refUri, FeaturesCls); // Initialize score follower instance (default parameters from ScoreFollower.tsx)
-      const follower = followerRef.current!; 
-
-      // Extract sample rate and window length from the ScoreFollower instance
-      const sampleRate = follower.sr;
-      const winLength = follower.winLen 
-
-      const frameSize = winLength; // Set framesize to window length property of scorefollower
-      frameSecRef.current = frameSize / sampleRate; 
-      const buffer = await liveFile.arrayBuffer(); // Read the response as an ArrayBuffer (binary data)
       
-      const decoded = await decode(buffer); // Decode the WAV buffer into PCM audio data
-      const ch0 = decoded.channelData[0]; // Extract the first audio channel (mono)
-      const audioData = ch0 instanceof Float32Array ? ch0 : Float32Array.from(ch0); // Ensure the data is a Float32Array
-      audioDataRef.current = audioData; // Store the decoded audio data in a ref for frame-by-frame access
-      const totalFrames = Math.ceil(audioData.length / frameSize); // Compute total frames for computing alignment path 
-      pathRef.current = []; // Initialize alignment path reference 
+      const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
+      const refUri = isWeb ? `/${base}/baseline/instrument_0.wav` : Asset.fromModule(refAssetMap[base]).uri; // Path to reference wav file of selected score depending on web or expo go version
 
-      // Precompute full alignment path offline
-      for (let i = 0; i < totalFrames; i++) {
+      console.log('-- Creating ScoreFollower...');
 
-        const start = i * frameSize; // Get starting frame 
-        let frame = audioData.subarray(start, start + frameSize); // Extract the audio frame from the buffer
+      // Initialize score follower instance (default parameters from ScoreFollower.tsx)
+      followerRef.current = await ScoreFollower.create(refUri, FeaturesCls);
+      console.log('-- ScoreFollower created');
+ 
+      const follower = followerRef.current!; 
+      const refFeatures = follower.ref.featuregram;
+      // console.log("ref f : ",refFeatures)
 
-        // Pad the frame if it's shorter than expected
-        if (frame.length < frameSize) {
-          const pad = new Float32Array(frameSize);
-          pad.set(frame);
-          frame = pad;
-        }
-        follower.step(Array.from(frame)); // Pass frame into score follower's step function to populate path
-        const last = follower.path[follower.path.length - 1]; // Get last updated frame from path
-        pathRef.current.push(last); // Insert frame into our path reference 
-      }
+      // Extract and set sample rate and window length from the ScoreFollower instance
+      const { sr, winLen } = follower;
+      setSampleRate(sr)
+      setFrameSize(winLen)
+      
+      
+      const frameSize = winLen; // Set framesize to window length property of scorefollower
+      const sampleRate = sr; // Set sampleRate property of scorefollower
+      frameSecRef.current = frameSize / sampleRate; // Duration of each frame in seconds
+
+      let buffer: ArrayBuffer; // Define an array buffer
+      console.log('-- Loading live audio buffer...');
+
+      buffer = await fetch(liveFile.uri).then(r => r.arrayBuffer()); // Web and mobile version of initializing array buffer given live uri 
+
+      console.log('-- Buffer loaded, byteLength=', buffer.byteLength);
+
+      console.log('-- Decoding WAV buffer...');
+
+      const result = await decode(buffer, { symmetric: true }); // Decode the WAV buffer into PCM audio data  - passed in symmetric = TRUE for better PCM samples when compared to the Python version
+
+      console.log('-- Decoded: channels=', result.channelData.length, 'origSR=', result.sampleRate);
+
+      let audioData = toMono(result.channelData); // Convert these PCM audio data to mono if needed 
+      audioData = resampleAudio(audioData, result.sampleRate, sampleRate) // Resample the resulting audio data if needed
+      audioDataRef.current = audioData;
+      console.log('-- Audio data prepared, length=', audioData.length);
+
+      console.log('-- Computing alignment path...');
+      pathRef.current = precomputeAlignmentPath(audioData, frameSize, follower); // Compute alignment path 
+
+      
+    console.log('-- Alignment path length=', pathRef.current.length);
+
+
+      // Get live features
+      // const liveExtractor = new FeaturesCls(
+      //   sr,
+      //   winLen,
+      //   audioData,  
+      //   winLen     
+      // );
+      // const liveFeatures = liveExtractor.featuregram;
+      // // console.log("live f : ",liveFeatures)
+      
+
+      // // Define distance function for Offline DTW
+      // const censDistance = (a: number[], b: number[]) => 1 - dot(a, b);
+
+      // // Run Offline DTW given full features
+      // const dtw = new DynamicTimeWarping(
+      //   refFeatures,    // Full ref features
+      //   liveFeatures,   // Full live features
+      //   censDistance // Distance function
+      // );
+      // const rawPath = dtw.getPath() // Get full path after run
+      // console.log("raw path: ", rawPath) // Just print to console log for now
+      
+
+      // downloadFullPCM(audioDataRef.current)
 
       {
         const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-        const csvUri = `/${base}/altered/ode_to_joy_300bpm_NEW.csv`; // Path the CSV given score name
-        const text = await fetch(csvUri).then(r => r.text()); // Fetch the CSV file and read its text
-        const lines = text.trim().split('\n'); // Split the CSV into lines (one line per row)
+        console.log('-- precompute CSV block: score=', score, '→ base=', base);
+        const csvUri = isWeb ? `/${base}/baseline/aotgs_solo_100bpm.csv` : Asset.fromModule(csvAssetMap[base]).uri; // Path the CSV given score name (web and alternative expo go version)
+        console.log('-- CSV URI =', csvUri);
 
+        console.log('-- Calling loadCsvInfo(csvUri, isWeb=', isWeb, ')…');
+        const rows = await loadCsvInfo(csvUri, isWeb); // Obtain rarray of csv rows (info on each note of score such as beat value, ref time when note is played, etc.)
+        console.log('-- Loaded CSV rows count =', rows.length);
 
-        const rows: CSVRow[] = lines.slice(1).map(line => { // Parse each data row (skipping the header at index 0)
-          const cols = line.split(','); // Split a single CSV line into its comma-separated columns
-          const beat = parseFloat(cols[0]) + 1;  // Column 0: beat index (add 1 to convert from zero-based to 1-based counting - NOTE: Beat movement logic was made to work with starting beat of 1 insteaf of beat 0)
-          const refTime = parseFloat(cols[5]); // Column 5: reference time for this beat (in seconds)
-          const liveTime = parseFloat(cols[6]);  // Column 6: actual live performance time for this beat (in seconds)
-          const predictedTime = 0 // Set to 0 for now, will populate later (need array of ref times)
-          return { beat, refTime, liveTime, predictedTime };
-
-        });
         csvDataRef.current = rows; // Save the parsed CSV rows for downstream use
+        
         const stepSize  = frameSecRef.current; // Duration of each frame in seconds
         const warpingPath = pathRef.current; // The Dynamic Time Warping path: an array of [referenceIndex, liveIndex] pairs
         const refTimes = csvDataRef.current.map(r => r.refTime); // Pull out just the reference times from each row to feed into the calculateWarpedTimes()
@@ -183,6 +214,7 @@ export default function ScoreFollowerTest({
           stepSize,
           refTimes
         );
+
         // Update CSV Interface with predicted live times for each note 
         csvDataRef.current = csvDataRef.current.map((row, i) => ({
           ...row,
@@ -193,7 +225,8 @@ export default function ScoreFollowerTest({
       }
       // Show full path
       console.log(pathRef.current)
-      
+      // return
+      setWarpingPath(pathRef.current);
        
       const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => { // Callback to handle audio playback status updates
         if (!status.isLoaded) return;  // Exit early if sound isn't loaded
@@ -204,90 +237,116 @@ export default function ScoreFollowerTest({
           currentTimeSec >= csvDataRef.current[nextIndexRef.current].predictedTime
         ) {
           const beat = csvDataRef.current[nextIndexRef.current].beat; // Get beat of that note
-          console.log('dispatching beat', beat);
           dispatch({ type: 'SET_ESTIMATED_BEAT', payload: beat }); // Update beat to move cursor
           nextIndexRef.current++; // Go to next row of csv 
         }
 
         // Handle end of playback
         if (status.didJustFinish) {
-          setProcessing(false);
+          dispatch({ type: 'start/stop',});
+          setPerformanceComplete(true);
           soundRef.current?.setOnPlaybackStatusUpdate(null);
         }
       };
 
-      const liveUrl = URL.createObjectURL(liveFile); // Extract url from liveFile state 
+      const soundSource = { uri: liveFile.uri };
+      dispatch({type: 'toggle_loading_performance'})
 
       // Create and load the sound object from the live audio URI
       const { sound } = await Audio.Sound.createAsync(
-        { uri: liveUrl }, // Audio source
+        soundSource, // Audio source
         {
           shouldPlay: true, // Automatically start playback once loaded
-          progressUpdateIntervalMillis: 50, // Set how often status updates are triggered 
+          progressUpdateIntervalMillis: 20, // Set how often status updates are triggered 
         },
         onPlaybackStatusUpdate // Callback to handle playback progress (frame processing, alignment, etc.)
       );
       soundRef.current = sound;
+      
 
     } catch (err) {
       console.error('ScoreFollower Error:', err);
-      setProcessing(false);
+      dispatch({ type: 'start/stop',});
     }
   };
 
   return (
-    <View style={styles.container}>
+    <View>
       {bpm ? (
         <Text style={styles.tempoText}>Reference Tempo: {bpm} BPM</Text>
-      ):
-      (
-        <></>
-      )
-      }
-      {/* Web file picker - hidden for styling purposes*/}
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".wav"
-        style={styles.hiddenInput}
-        disabled={processing}
-        onChange={handleFileChange}
-      />
+      ) : null}
 
-      {/* Visable web file picker - actual button shown*/}
-      <TouchableOpacity
-        style={[styles.fileButton, processing && styles.disabledButton]}
-        onPress={() => inputRef.current?.click()}
-        disabled={processing}
-      >
-        <Text style={styles.buttonText}>
-          {liveFile ? `Selected: ${liveFile.name}` : 'Upload a Performance'} 
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.row}>
+        <View style={styles.pickerContainer}>
+          {Platform.OS === 'web' ? (
+            <>
+              <input
+                ref={inputRef}
+                type="file"
+                accept=".wav"
+                style={styles.hiddenInput}
+                disabled={state.playing}
+                onChange={onWebChange}
+              />
+              <TouchableOpacity
+                style={[styles.fileButton, state.playing && styles.disabledButton]}
+                onPress={() => inputRef.current?.click()}
+                disabled={state.playing}
+              >
+                <Text
+                  style={styles.buttonText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {liveFile ? `Selected: ${liveFile.name}` : 'Upload a Performance'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity
+              style={[styles.fileButton, state.playing && styles.disabledButton]}
+              onPress={onMobilePress}
+              disabled={state.playing}
+            >
+              <Text
+                style={styles.buttonText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {liveFile ? `Selected: ${liveFile.name}` : 'Select WAV File'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.graphContainer}>
+          <TempoGraph
+            refTempo={bpm}
+            beatsPerMeasure={state.beatsPerMeasure}
+            warpingPath={warpingPath}
+            scoreName={score.replace(/\.musicxml$/, '')}
+            disabled={!performanceComplete || liveFile == null}
+            frameSize={frameSize}
+            sampleRate={sampleRate}
+          />
+        </View>
+      </View>
 
       <TouchableOpacity
-        style={[styles.button, (processing || !liveFile) && styles.disabledButton]}
+        style={[styles.button, (state.score === "" || state.playing || !liveFile) && styles.disabledButton]}
         onPress={runFollower}
-        disabled={processing || !liveFile}
+        disabled={state.score === "" || state.playing || !liveFile}
       >
         <Text style={styles.buttonText}>
-          {processing ? 'Running...' : 'Play'}
+          {state.playing ? 'Running...' : 'Play'}
         </Text>
       </TouchableOpacity>
-
-      {/* <View style={styles.status}>
-        <Text style={styles.label}>
-          Time: {estimatedTime.toFixed(2)} s → Beat: {estimatedBeat.toFixed(2)}
-        </Text>
-      </View> */}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    marginVertical: 12
-  },
+
   button: {
     padding: 12,
     backgroundColor: '#2C3E50',
@@ -300,6 +359,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFF',
     fontWeight: 'bold',
+    fontSize: 14,
   },
   status: {
     marginTop: 16,
@@ -323,13 +383,27 @@ const styles = StyleSheet.create({
    hiddenInput: {
     display: 'none',
   },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 4,
+  },
+  pickerContainer: {
+    flex: 1,
+    marginRight: 8,
+    minWidth: 0, // allow shrinking so text can ellipsize
+  },
+  graphContainer: {
+    flexShrink: 0, // keep graph its intrinsic size
+  },
   fileButton: {
     padding: 12,
     backgroundColor: '#2C3E50',
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 8,
+    // optional hard cap to be safer:
+    maxWidth: 220,
   },
-
 });
-

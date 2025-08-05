@@ -1,7 +1,7 @@
 type FeaturesConstructor<F extends Features<unknown>> = new (
   sr: number,
   winLen: number,
-  audioSamples?: number[],
+  audioSamples?: number[] | Float32Array,
   hopLen?: number
 ) => F;
 
