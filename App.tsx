@@ -26,7 +26,7 @@ export default function App() {
   // with the current state as the state and the dispatch function's argument as the action,
   // and updates the state to be the output of the reducer_function.
   const [state, dispatch] = useReducer(
-    reducer_function, // The reducer function is found in Dispatch.ts
+    reducer_function, // The reducer function is found in /store/Dispatch.ts
     {
       inPlayMode: false, // whether we are in play mode (and not score selection mode)
       playing: false, // whether the audio is playing

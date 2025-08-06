@@ -1,17 +1,12 @@
- import { StyleSheet, View, Text, Animated, Platform, TouchableOpacity } from "react-native";
+import { StyleSheet, View, Animated, Platform, TouchableOpacity } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
-import React, { useEffect, useState } from "react";
-import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import React, { useEffect } from "react";
 import Icon from "react-native-vector-icons/FontAwesome";
-import  scoresData  from '../musicxml/scores';
 import  scoreToMidi   from '../musicxml/scoreToMidi';
-import { Audio } from 'expo-av';
-import { Button } from 'react-native';
-import { Asset } from "expo-asset";
 import AudioGenerator from "../audio/AudioGenerator";
+import { musicXmlUploadWeb, musicXmlUploadNative } from '../utils/fileSelectorUtils';
 
-export function Score_Select({
+export function Score_Select({ // Data passed from App.tsx
   state,
   dispatch,
   textStyle,
@@ -26,29 +21,9 @@ export function Score_Select({
   button_format: object[];
   button_text_style: Animated.AnimatedInterpolation<string | number>;
 }) {
-  // Fetch scores from the backend
-  // useEffect(() => {
-  //   const fetchScores = async () => {
-  //     try {
-  //       const response = await fetch("http://127.0.0.1:5000/scores"); // Replace with your backend endpoint
-  //       console.log("Response is: ", response);
-  //       if (!response.ok) {
-  //         throw new Error(HTTP error! status: ${response.status});
-  //       }
-  //       const data = await response.json();
-  //       const scores = data.files;
-  //       console.log("Scores are: ", scores);
-  //       dispatch({ type: "new_scores_from_backend", scores });
-  //     } catch (error) {
-  //       console.error("Failed to fetch scores:", error);
-  //     }
-  //   };
 
-  //   fetchScores();
-  // }, [dispatch]);
-
-  // Array of score names used to render score display options 
-  // Array of score names used to render score display options 
+  // Array of score names used to render the available scores for the app 
+  // Entries are used within a hashmap to access certain data needed for the selected score
   const musicxmlFiles: string[] = [
     'air_on_the_g_string.musicxml',
     'schumann_melodyVLCduet.musicxml',
@@ -57,185 +32,80 @@ export function Score_Select({
     'ode_to_joy.musicxml', 
     'green_sleeves.musicxml'
   ];
-  
+
+  // Populate our global stat.scores with the given scores in musicxmlFiles 
   useEffect(() => {
-    dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles }); // pass in defined array of musicxml files
+    dispatch({ type: "new_scores_from_backend", scores: musicxmlFiles });
   }, [dispatch]);
-
-  useEffect(() => {
-    console.log("[Score_Select] referenceAudioUri is now:", state.referenceAudioUri);
-  }, [state.referenceAudioUri]);
-
-
-// inside your component body:
-const [refSound, setRefSound] = useState<Audio.Sound | null>(null);
-
-// Clean up when unmounting or when a new sound is loaded
-useEffect(() => {
-  return () => {
-    if (refSound) {
-      refSound.unloadAsync();
-    }
-  };
-}, [refSound]);
-
-const playReferenceAudio = async () => {
-  if (!state.referenceAudioUri) return;
-
-  // Unload old sound if any
-  if (refSound) {
-    await refSound.unloadAsync();
-  }
-
-  // Load the new WAV file
-  const { sound } = await Audio.Sound.createAsync(
-    { uri: state.referenceAudioUri },
-    { shouldPlay: true }
-  );
-  setRefSound(sound);
-};
-  // Web file upload handler
-  const noteFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const xmlContent = ev.target?.result as string;
-        const fileName = file.name; // extract the file name 
-        if (!state.scores.includes(fileName)) { // only add new score if the new uploaded score's name isn't already stored within scores
-          const newScore = {
-            filename: fileName,
-            piece: fileName.replace(".musicxml", ""),
-            content: xmlContent,
-          };
-          dispatch({ type: "new_score_from_upload", score: newScore });
-        }
-      };
-      reader.onerror = (e) => {
-        console.error("Error reading file:", e);
-      };      
-      reader.readAsText(file);
-    } else {
-      console.log("No file selected");
-    }
-  };
-
-  // mobile file upload handler
-  const nativeNoteFileUpload = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*', // Alllow any file
-        copyToCacheDirectory: true, // Save to cache for performance
-      });
-  
-      if (result.canceled || !result.assets || result.assets.length === 0) { // Error handling  
-        console.log("No file selected or canceled");
-        return;
-      }
-      // Extract the file URI and name from the result
-      const { uri, name: fileName } = result.assets[0];
-      console.log("lets goooo!", fileName);
-      
-      // Error handling if file is not type .musicxml 
-      if (!fileName.toLowerCase().endsWith('.musicxml')) {
-        alert('Please select a .musicxml file');
-        return;
-      }
-      // Only read from URI if file name is not already in the available scores
-      if (!state.scores.includes(fileName)) {
-        const xmlContent = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.UTF8,
-        });
-        
-        // Setup payload  (object containing: filename, piecename (filtered out .musicxml), and the loaded xml content)
-        const newScore = {
-          filename: fileName,
-          piece: fileName.replace(/\.musicxml$/, ''),
-          content: xmlContent,
-        };
-
-        dispatch({ type: 'new_score_from_upload', score: newScore });
-      }
-      // Catch any errors (e.g. getting file using DocumentPicker or reading using FileSystem)
-    } catch (err) {
-      console.error('Error picking document:', err);
-      alert('Something went wrong. Check console.');
-    }
-  };
-  
-const WebFileInput = () => {
-  return React.createElement('input', {
-    type: 'file',
-    accept: '.musicxml',
-    onChange: noteFileUpload,
-    style: { color: '#000' },
-  });
-};
 
   return (
     <View>
-      <Animated.Text style={[{color: textStyle}, styles.text]}>Select a score:</Animated.Text>
+      <Animated.Text style={[{color: textStyle}, styles.text]}>Select a score:</Animated.Text> 
       <View style={styles.input} pointerEvents={state.isplaying ? "none" : "auto"}>
-        <RNPickerSelect
-          disabled={state.isplaying}
 
-          key={state.scores.length} //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
-          onValueChange={(value) => {
+        <RNPickerSelect //RNPicker is a new instance depending on the length of score. So, it will rerender if updated
+          disabled={state.isplaying} // Can't select score when performance is playing
+
+          key={state.scores.length} 
+          onValueChange={(value) => { // Extra protection if disable is not working
             if (state.playing) {
-              console.log("Score change blocked because playback is active.");
-              return; // ignore while playing
+              return; // Ignore while playing
             }
-            console.log("The dispatch function is being sent.");
-            console.log("val: ", value)
 
-            const midiModule = scoreToMidi[value];
+            // midiModule contains the MIDI file for the selected score (obtained using scoreToMidi hashmap - key=musicxml_name , value=require(path_to_midi_file))
+            const midiModule = scoreToMidi[value]; 
             
-            // dispatch both into state
+            // Dispatch both into state
             dispatch({
               type: 'change_score',
-              score: value,
-              accompanimentSound: midiModule,
+              score: value, // Pass in current score name
+              accompanimentSound: midiModule, // Pass in current score's midi file
             });
-            //dispatch({ type: "change_score", score: value });
           }}
-          items={state.scores.map((score) => ({
-            label: score,
-            value: score,
+        
+          items={state.scores.map((score) => ({ // Go through each scroe and actually load the score options visually in the selector
+            label: score.replace(/\.musicxml$/i, ''), // Remove the .musicxml extension when selecting a score option visually for a better UI experience
+            value: score, // Actual value still contains .musicxml extension which we still need for other logic such has the hashmap
           }))}
+
           placeholder={{
             label: "Select a score",
             value: "",
           }}
-          // Drop down arrow for mobile to select score
+
+          // Drop down arrow for mobile to select score (only visible on mobile version)
           Icon={Platform.OS !== 'web' ? () => <Icon name="chevron-down" size={16} color="#000" /> : undefined}
         />
-        {/* {state.referenceAudioUri && (
-          <TouchableOpacity onPress={playReferenceAudio} style={styles.button}>
-            <Text style={styles.button_text}>Play Reference Audio</Text>
-          </TouchableOpacity>
 
-        )} */}
-        <AudioGenerator midiModule={scoreToMidi[state.score]} dispatch={dispatch}/>
+        {/* Old component used to generate wav files given midi but no longer needed since we have direct access to wav files */}
+        {/* This component doesnt render anything visually but just stores the wav audio that is generated from the given midi to the global state */}
+        <AudioGenerator midiModule={scoreToMidi[state.score]} dispatch={dispatch}/> 
       </View>
 
+      {/* Upload WAV file feature */}
       <Animated.Text style={{ color: textStyle, marginTop: 12}}>Or upload a new score:</Animated.Text>
       <Animated.View style={[styles.input, { borderBottomWidth: 2, borderBottomColor: borderStyle, paddingBottom: 24 }]}>      
 
         {/* If on browser render upload field for web*/}
         {Platform.OS === 'web' ? 
-        (
-          <WebFileInput />
-        ) : 
-        (
-          // Else render upload field for mobile
-          <Animated.View 
- 
-            >
-              <TouchableOpacity onPress={nativeNoteFileUpload} disabled={true} style={[...button_format, styles.disabledButton]}  >
-                <Animated.Text style={{color: button_text_style, fontWeight: "bold"}}>Upload File</Animated.Text>
-              </TouchableOpacity>
-          </Animated.View>
-        )}
+          (
+            <input
+              type="file"
+              accept=".musicxml"
+              onChange={e => musicXmlUploadWeb(e, state.scores, dispatch)}
+              style={{ color: '#000' }}
+              disabled={true}
+            />
+          ) : 
+          (
+            // Else render upload field for mobile
+            <Animated.View 
+              >
+                <TouchableOpacity onPress={()=>musicXmlUploadNative(state.scores, dispatch)} disabled={true} style={[...button_format, styles.disabledButton]}  >
+                  <Animated.Text style={{color: button_text_style, fontWeight: "bold"}}>Upload File</Animated.Text>
+                </TouchableOpacity>
+            </Animated.View>
+          )}
       </Animated.View>
     </View>
   );
@@ -260,7 +130,9 @@ const styles = StyleSheet.create({
     padding:10, borderRadius:8, alignItems:'center', marginVertical:5,
     shadowColor:'#000', shadowOffset:{ width:0, height:3 }, shadowOpacity:0.17, shadowRadius:3.05, elevation:4, backgroundColor:'#2C3E50' 
   },
-  button_text: { textAlign:'center', fontSize:14, color:'#FFF', fontWeight:'bold' },
+  button_text: { 
+    textAlign:'center', fontSize:14, color:'#FFF', fontWeight:'bold' 
+  },
   disabledButton: {
     backgroundColor: '#555',
   },
