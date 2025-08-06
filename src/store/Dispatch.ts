@@ -128,14 +128,6 @@ const reducer_function = (state: any, action: any) => {
           ...state,
           estimatedBeat: action.payload as number,
         };
-
-      // New action for errors in beat estimation
-      case "SET_ESTIMATED_BEAT_ERROR":
-        console.error("[reducer] Estimated beat error:", action.payload);
-        return {
-          ...state,
-          estimatedBeatError: action.payload as string,
-        };
       case "change_bottom_audio":
         // store the URI so ScoreFollower can pick it up
         console.log("[reducer] bottomAudioUri stored in state:", action.bottomAudioUri);
