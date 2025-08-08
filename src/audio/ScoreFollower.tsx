@@ -1,7 +1,7 @@
 const wav = require('node-wav');
 
 import { resampleAudio, toMono } from '../utils/audioUtils';
-import { Features, FeaturesConstructor } from './Features';
+import { Features, FeaturesConstructor } from './features';
 import OnlineTimeWarping from './OnlineTimeWarping';
 
 /**

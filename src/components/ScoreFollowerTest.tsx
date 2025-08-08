@@ -26,7 +26,7 @@ import { Audio, AVPlaybackStatus } from 'expo-av';
 import { decode } from 'wav-decoder';
 import { ScoreFollower } from '../audio/ScoreFollower';
 import { CENSFeatures } from '../audio/FeaturesCENS';
-import { FeaturesConstructor } from '../audio/Features';
+import { FeaturesConstructor } from '../audio/features';
 import { Platform } from 'react-native';
 import { Asset } from 'expo-asset';
 import TempoGraph from './TempoGraph';
@@ -199,6 +199,10 @@ export default function ScoreFollowerTest({
         if (status.didJustFinish) {
           dispatch({ type: 'start/stop',});
           setPerformanceComplete(true);
+          dispatch({ type: 'SET_ESTIMATED_BEAT', payload: 0}); 
+          nextIndexRef.current = 0;                
+          pathRef.current = [];
+          setWarpingPath([]);
           soundRef.current?.setOnPlaybackStatusUpdate(null);
         }
       };
