@@ -8,14 +8,17 @@ const reducer_function = (state: any, action: any) => {
   // Note that these functions only affect the state - things like the visible cursor
   // position and playback rate of the audio must be made to depend on the state
   // (likely with useEffect) in order to work.
+  
   switch (action.type) {
+
     // Example of dispatch call with no special parameters:
     // this object-join notation causes state to only change in one property, playing,
     // which becomes the opposite of what it was before.
-    case "start/stop":
-      return { ...state, ...{ playing: !state.playing } };
 
-    case "update_piece_info":
+    case "start/stop": // Toggle boolean (true or false) to determine current playing state
+      return { ...state, ...{ playing: !state.playing } }; 
+
+    case "update_piece_info": // Keep current global state values, but update tempo and beatsPerMeasure to what was passed in
       return {
         ...state,
         ...{
@@ -24,8 +27,7 @@ const reducer_function = (state: any, action: any) => {
         },
       };
   
-    // Here, it's decided that the mechanism to change the score also resets the play
-    case "change_score":
+    case "change_score": // Keep current global state values, but update score name, accompanimentSound (not applicable in Evaluator project), and set playing to false
       return {
         ...state,
         ...{
@@ -35,8 +37,7 @@ const reducer_function = (state: any, action: any) => {
         },
       };
 
-    // Gets list of scores - without overwriting uploaded score
-    case "new_scores_from_backend":
+    case "new_scores_from_backend": // Gets list of scores - without overwriting uploaded score
       var known_files = state.scores;
       var new_files = action.scores.filter(
         (filename: string) => !known_files.includes(filename),
@@ -49,9 +50,9 @@ const reducer_function = (state: any, action: any) => {
         },
       };
 
-      case "new_score_from_upload":
+      case "new_score_from_upload": // Keep the existing state and add the new score content to the scoreContents object using the filename as the key
         return {
-          ...state, // Keep the existing state
+          ...state, 
           scores: [...state.scores, action.score.filename], // Add the new score filename to the scores array
           score: action.score.filename, // Set the current score to the newly uploaded filename
           scoreContents: { 
@@ -60,31 +61,27 @@ const reducer_function = (state: any, action: any) => {
           },
         };
 
-      case "change_reference_audio":
-        // store the URI so ScoreFollower can pick it up
+      case "change_reference_audio": // Keep the existing state and update the URI for reference audio 
         console.log("[reducer] referenceAudioUri stored in state:", action.referenceAudioUri);
         return {
           ...state,
           referenceAudioUri: action.referenceAudioUri as string,
         };
 
-      // New action to set estimated beat
-      case "SET_ESTIMATED_BEAT":
+      case "SET_ESTIMATED_BEAT": // Keep the existing state and  update estimatedBeat variable
         console.log("[reducer] Estimated beat:", action.payload);
         return {
           ...state,
           estimatedBeat: action.payload as number,
         };
 
-      case "change_bottom_audio":
-        // store the URI so ScoreFollower can pick it up
-        console.log("[reducer] bottomAudioUri stored in state:", action.bottomAudioUri);
+      case "change_bottom_audio": // Keep the existing state and update the URI for playback audio (second instrument - only used in Companion Project) audio 
         return {
           ...state,
           bottomAudioUri: action.bottomAudioUri as string,
         };
-        
-      case "toggle_loading_performance":
+
+      case "toggle_loading_performance": // Keep the existing state and toggle the loadingPerformance boolean (true or false values)
         return {
           ...state,
           loadingPerformance: !state.loadingPerformance,
