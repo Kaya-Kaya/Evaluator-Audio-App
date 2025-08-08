@@ -1,9 +1,8 @@
 // Import necessary modules and components from the Expo and React Native libraries
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View, Image, SafeAreaView, TouchableOpacity, useWindowDimensions, ScrollView, TextStyle, Animated, Platform } from "react-native";
+import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, useWindowDimensions, ScrollView, Animated, Platform } from "react-native";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { Score_Select } from "./src/components/ScoreSelect";
-import { Fraction } from "opensheetmusicdisplay";
 import reducer_function from "./src/store/Dispatch";
 import ScoreDisplay from "./src/components/ScoreDisplay";
 import Icon from 'react-native-vector-icons/Feather';
@@ -25,37 +24,30 @@ export default function App() {
   // when the dispatch function is called, it takes one argument, calls the reducer_function
   // with the current state as the state and the dispatch function's argument as the action,
   // and updates the state to be the output of the reducer_function.
+
   const [state, dispatch] = useReducer(
     reducer_function, // The reducer function is found in /store/Dispatch.ts
     {
-      inPlayMode: false, // whether we are in play mode (and not score selection mode)
-      playing: false, // whether the audio is playing
-      resetMeasure: 1, // the measure to reset to
-      playRate: 1.0, // the rate at which the audio is playing
-      timestamp: 0.0, // the current position in the piece in seconds
-      cursorTimestamp: 0.0, // the position of the cursor in the piece in seconds
-      time_signature: new Fraction(4, 4, 0, false),
-      score: "", // the score to display
-      sessionToken: null, // the session token for the API
-      accompanimentSound: null, // the accompaniment sound
-      synth_tempo: 100, // the tempo of the synthesized audio
-      tempo: null, // the tempo in the tempo box (even if changed more recently)
-      score_tempo: 100, // the tempo in the musical score
-      scores: [], // the list of scores to choose from
-      referenceAudioUri: null as string | null, // reference to score's top voice audio
-      estimatedBeat: null as number | null, // beat value we think the soloist is at given alignment path
-      bottomAudioUri: null as string | null, //playback audio uri (for when there is two instruments - ref to bottom one)
-      beatsPerMeasure: 0, // numerator of time signature used to compute values for the tempo by measure graph (TempoGraph.tsx)
-      loadingPerformance: false // boolean indicator to let other components know if we are currently loading a performance or not to enable or disable certain functions
+      playing: false, // Whether the audio is playing 
+      score: "", // The score name we are currently on (followed with .musicxml)
+      accompanimentSound: null, // The accompaniment sound (no applicable in evalautor project but here just in case )
+      tempo: null, // The tempo of the current score  (extracted from musicxml file using helper function "extractTempo()")
+      scores: [], // The list of scores to choose from
+      referenceAudioUri: null as string | null, // Reference to score's top voice audio uri (first instrument)
+      estimatedBeat: null as number | null, // Beat value we think the soloist is at
+      bottomAudioUri: null as string | null, // Playback audio uri (for when there is two instruments - ref audio uri to bottom one, only applicable in Companion Project)
+      beatsPerMeasure: 0, // Numerator of time signature used to compute values for the tempo by measure graph (TempoGraph.tsx)
+      loadingPerformance: false // Boolean indicator to let other components know if we are currently loading a performance or not to enable or disable certain functions
     },
   );
 
   const [chroma, setChroma] = useState<number[]>(new Array(12).fill(0)); // Initialize the chroma state as an array of 12 zeros (used to capture chroma vector at each chunk of audio).
-  const [started, setStarted] = useState(false); // state used to determine user selects live microphone option or not
-  const processor = useRef(new ExpoMicProcessor()).current; // Create a stable ExpoMicProcessor instance that persists across renders
+  const [started, setStarted] = useState(false); // State used to determine user toggled the live microphone option or not
+
+  const processor = useRef(new ExpoMicProcessor()).current; // Create a stable ExpoMicProcessor instance
   const SAMPLE_RATE = 44100;  // Define sample rate for ChromaMaker
   const N_FFT = 4096; // Define chunk size for ChromaMaker
-  const chromaMaker = useRef(new CENSFeatures(SAMPLE_RATE, N_FFT)).current; // Create a stable ChromaMaker instance that persists across renders
+  const chromaMaker = useRef(new CENSFeatures(SAMPLE_RATE, N_FFT)).current; // Create a stable ChromaMaker instance 
   
   // Initialize mic to capture live audio when "started" state changes (on mic icon click)
   useEffect(() => {
@@ -71,9 +63,10 @@ export default function App() {
     };
   }, [started]);
 
-  // Helper function useThemeAnimations() used to obtain dynamic styles (containerBackgroundColor, textColor, etc...) based on theme variable
   const {
-    theme, 
+    theme, // Variable used to determine the colors of the following styles
+
+    // Dynmaic styles based on "theme"
     containerBackgroundColor,
     textColor,
     invertTextColor,
@@ -81,8 +74,9 @@ export default function App() {
     mainContentBackgroundColor,
     buttonBackgroundColor,
     borderBottomColor,
+
     toggleTheme, // Function used to switch themes
-  } = useThemeAnimations();
+  } = useThemeAnimations(); // Helper function useThemeAnimations() used to obtain dynamic styles (containerBackgroundColor, textColor, etc...) based on theme variable
 
   const { width, height } = useWindowDimensions() // Get device's width 
   const isSmallScreen = width < 960;  // Boolean used for dynmaic display (row or column)
@@ -135,8 +129,8 @@ export default function App() {
 
             {/* Sidebar for inputs and buttons (takes up little width) */}
             <Animated.View style={[styles.sidebar, { backgroundColor: sidebarBackgroundColor }, isSmallScreen ? styles.sidebarColumn : {}]}>
-              { // UI of rendering the list of scores for the user to select - show when not in play mode
-              state.inPlayMode || <Score_Select state={state} dispatch={dispatch} textStyle={textColor} borderStyle={borderBottomColor} button_text_style={invertTextColor} button_format={[styles.button, {backgroundColor: buttonBackgroundColor}]}/> }
+               {/* UI of rendering the list of scores for the user to select - show when not in play mode */}
+               <Score_Select state={state} dispatch={dispatch} textStyle={textColor} borderStyle={borderBottomColor} button_text_style={invertTextColor} button_format={[styles.button, {backgroundColor: buttonBackgroundColor}]}/> 
               
               {/* Start button to play performance */}
               <ScoreFollowerTest 
@@ -159,10 +153,6 @@ export default function App() {
               </Animated.View>
             </ScrollView>
           </View>
-
-          {/* Footer display for status */}
-          <StatusBar style="auto" />
-          {/* Automatically adjusts the status bar style */}
         </ScrollView>
       </Animated.View>
     </SafeAreaView>

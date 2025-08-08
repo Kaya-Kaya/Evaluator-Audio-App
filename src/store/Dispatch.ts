@@ -15,66 +15,15 @@ const reducer_function = (state: any, action: any) => {
     case "start/stop":
       return { ...state, ...{ playing: !state.playing } };
 
-    // Example of dispatch call with special parameter:
-    // dispatch( {type:'change_reset', measure:'3'}) will leave
-    // state unchanged except for the resetMeasure property, which becomes 3
-    case "change_reset":
-      return { ...state, ...{ resetMeasure: action.measure as number } };
-
-    // Multiple properties can be updated in tandem, as the playrate and position
-    // would be in every syncrhonization request
-    case "increment":
-      return {
-        ...state,
-        ...{
-          playRate: action.rate as number,
-          timestamp: action.time as number,
-        },
-      };
-    
-    case "swap_mode":
-      return {
-        ...state,
-        ...{
-          inPlayMode: !state.inPlayMode
-        }
-      }
-
-    // When resetting, move the cursor, then adjust the timestamp accordingly and reset the playback rate
-    case "reset":
-      console.log("It should be resetting now.");
-      var reset_time =
-        (60 * state.time_signature.Numerator * (state.resetMeasure - 1)) /
-        state.synth_tempo;
-      state.accompanimentSound.setPositionAsync(reset_time * 1000);
-      return {
-        ...state,
-        ...{ playing: false, playRate: 1.0, timestamp: reset_time },
-      };
-    case "cursor_update":
-      return { ...state, ...{ cursorTimestamp: action.time as number } };
-    case "change_tempo":
-      return { ...state, ...{ tempo: action.tempo as number } };
     case "update_piece_info":
       return {
         ...state,
         ...{
-          time_signature: action.time_signature,
-          score_tempo: action.tempo as number,
           tempo: action.tempo as number,
           beatsPerMeasure: action.beatsPerMeasure,
         },
       };
-    case "new_session":
-      console.log("New session token received.");
-      return { ...state, ...{ sessionToken: action.token } };
-    case "new_audio":
-      console.log("New audio received.");
-      return {
-        ...state,
-        ...{ accompanimentSound: action.sound, synth_tempo: state.tempo },
-      };
-
+  
     // Here, it's decided that the mechanism to change the score also resets the play
     case "change_score":
       return {
@@ -83,8 +32,6 @@ const reducer_function = (state: any, action: any) => {
           score: action.score,
           accompanimentSound: action.accompanimentSound,
           playing: false,
-          timestamp: 0.0,
-          playRate: 1.0,
         },
       };
 
@@ -128,6 +75,7 @@ const reducer_function = (state: any, action: any) => {
           ...state,
           estimatedBeat: action.payload as number,
         };
+
       case "change_bottom_audio":
         // store the URI so ScoreFollower can pick it up
         console.log("[reducer] bottomAudioUri stored in state:", action.bottomAudioUri);
@@ -135,6 +83,7 @@ const reducer_function = (state: any, action: any) => {
           ...state,
           bottomAudioUri: action.bottomAudioUri as string,
         };
+        
       case "toggle_loading_performance":
         return {
           ...state,

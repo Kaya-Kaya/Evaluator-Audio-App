@@ -55,8 +55,6 @@ export const initOsmdWeb = (osmContainerRef: React.RefObject<HTMLDivElement>,
           
           dispatch({
             type: "update_piece_info",
-            time_signature:
-              cursorRef.current.Iterator.CurrentMeasure.ActiveTimeSignature,
             tempo: tempo,
             beatsPerMeasure: cursorRef.current.Iterator.CurrentMeasure.ActiveTimeSignature.Numerator
           });
@@ -265,7 +263,6 @@ export const buildOsmdHtmlForNative = (xml: string, defaultZoom = 0.45): string 
 
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'loaded',
-            time_signature: { numerator: ts.numerator, denominator: ts.denominator },
             beatsPerMeasure: ts.numerator,
             tempo: tempo
           }));
@@ -285,7 +282,6 @@ export const onHandleOsmdMessageForNative = (raw: string, dispatch: any) => {
     if (data.type === 'loaded') {
       dispatch({
         type: 'update_piece_info',
-        time_signature: data.time_signature,
         tempo: data.tempo, // Update ref tempo in global state
         beatsPerMeasure: data.beatsPerMeasure, // Update beats per measure in global state
 
