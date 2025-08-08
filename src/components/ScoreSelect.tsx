@@ -2,7 +2,7 @@ import { StyleSheet, View, Animated, Platform, TouchableOpacity } from "react-na
 import RNPickerSelect from "react-native-picker-select";
 import React, { useEffect } from "react";
 import Icon from "react-native-vector-icons/FontAwesome";
-import  scoreToMidi   from '../musicxml/scoreToMidi';
+import  scoreToMidi   from '../score_name_to_data_map/scoreToMidi';
 import AudioGenerator from "../audio/AudioGenerator";
 import { musicXmlUploadWeb, musicXmlUploadNative } from '../utils/fileSelectorUtils';
 

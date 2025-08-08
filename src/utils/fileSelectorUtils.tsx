@@ -113,3 +113,25 @@ export const musicXmlUploadNative = async (stateScores: string[], dispatch: Func
     alert('Something went wrong. Check console.');
   }
 };
+
+export const extractTempo = (xml: string): number | null => {
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xml, "application/xml");
+
+      const sound = xmlDoc.querySelector("sound[tempo]");
+      if (sound?.getAttribute("tempo")) {
+        return parseFloat(sound.getAttribute("tempo")!);
+      }
+
+      const perMin = xmlDoc.querySelector("metronome > per-minute");
+      if (perMin?.textContent) {
+        return parseFloat(perMin.textContent);
+      }
+
+      return null;
+    } catch (error) {
+      console.warn("Failed to extract tempo from XML:", error);
+      return null;
+    }
+  };

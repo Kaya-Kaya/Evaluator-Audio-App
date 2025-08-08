@@ -1,4 +1,29 @@
+// # The MIT License (MIT)
+
+// Copyright (c) 2016 PART <info@gordonlesti.com>, <https://fheyen.github.io/>
+
+// > Permission is hereby granted, free of charge, to any person obtaining a copy
+// > of this software and associated documentation files (the "Software"), to deal
+// > in the Software without restriction, including without limitation the rights
+// > to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// > copies of the Software, and to permit persons to whom the Software is
+// > furnished to do so, subject to the following conditions:
+// >
+// > The above copyright notice and this permission notice shall be included in
+// > all copies or substantial portions of the Software.
+// >
+// > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// > IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// > FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// > AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// > LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// > OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// > THE SOFTWARE.
+
+import { FeaturesConstructor } from "../audio/features";
 import { ScoreFollower } from "../audio/ScoreFollower";
+import { dot } from "../audio/FeaturesCENS";
+import DynamicTimeWarping from "dynamic-time-warping-ts";
 
 /**
  * Given a DTW warping path and reference audio timestamps, compute estimated live audio timestamps.
@@ -82,9 +107,9 @@ export function precomputeAlignmentPath(
   frameSize: number,
   follower: ScoreFollower
 ): [number, number][] {
+
   const totalFrames = Math.ceil(audioData.length / frameSize);
   console.log(`precomputeAlignmentPath: totalFrames = ${totalFrames}, frameSize = ${frameSize}`);
-
   const path: [number, number][] = [];
 
   for (let i = 0; i < totalFrames; i++) {
@@ -99,18 +124,43 @@ export function precomputeAlignmentPath(
     }
 
     console.log(`    Calling follower.step() on frame ${i}`);
-
-    // Step the follower with a plain number[]
-     const timeSec = follower.step(Array.from(frame));
-    console.log(`    → step returned timeSec = ${timeSec.toFixed(3)}s`);
+    const timeSec = follower.step(Array.from(frame)); // Step the follower with a plain number[]
+    console.log(`    -- step returned timeSec = ${timeSec.toFixed(3)}s`);
 
     // Capture the last updated warping step
     const last = follower.path[follower.path.length - 1] as [number, number];
     console.log(`    Latest path entry [refIdx, liveIdx] = [${last[0]}, ${last[1]}]`);
-
     path.push(last);
   }
-  console.log(`precomputeAlignmentPath: completed, path length = ${path.length}`);
 
+  console.log(`precomputeAlignmentPath: completed, path length = ${path.length}`);
   return path;
+}
+
+export const computeOfflineAlignmentPath = ( refFeatures: any,
+  liveAudioData: Float32Array,
+  FeaturesCls: FeaturesConstructor<any>,
+  sampleRate: number,
+  windowLength: number): Array<[number, number]> => 
+{
+  // Get live features
+  const liveExtractor = new FeaturesCls(
+    sampleRate,
+    windowLength,
+    liveAudioData,  
+    windowLength     
+  );
+  const liveFeatures = liveExtractor.featuregram;
+
+  // Define distance function for Offline DTW
+  const censDistance = (a: number[], b: number[]) => 1 - dot(a, b);
+
+  // Run Offline DTW given full features
+  const dtw = new DynamicTimeWarping(
+    refFeatures,    // Full ref features
+    liveFeatures,   // Full live features
+    censDistance // Distance function
+  );
+
+  return dtw.getPath() // Return full path after run
 }
