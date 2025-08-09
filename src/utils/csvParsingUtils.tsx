@@ -1,5 +1,3 @@
-import * as FileSystem from 'expo-file-system';
-
 /**
  * Represents a single row of tempo CSV data.
  */
@@ -18,11 +16,10 @@ export interface CSVRow {
  * @param text - Full CSV content as a string
  * @returns Array of CSVRow with predictedTime initialized to 0
  */
-export function parseCsv(text: string): CSVRow[] {
-  // Split into lines and remove any trailing blank lines
-  const lines = text.trim().split(/\r?\n/);
-  // Drop the header row
-  const dataLines = lines.slice(1);
+export const parseCsv = (text: string): CSVRow[] => {
+
+  const lines = text.trim().split(/\r?\n/);  // Split into lines and remove any trailing blank lines
+  const dataLines = lines.slice(1);  // Drop the header row
 
   return dataLines.map(line => {
     const cols = line.split(',');
@@ -36,24 +33,16 @@ export function parseCsv(text: string): CSVRow[] {
 }
 
 /**
- * Loads and parses a tempo CSV from a given URI, handling web fetch or mobile filesystem.
+ * Loads and parses a tempo CSV from a given URI.
  *
  * @param csvUri - URI or path to the CSV file
- * @param isWeb - true for web fetch, false for Expo FileSystem
  * @returns Promise resolving to an array of CSVRow
  */
-export async function loadCsvInfo(
+export const loadCsvInfo = async (
   csvUri: string,
-  isWeb: boolean
-): Promise<CSVRow[]> {
+): Promise<CSVRow[]> => 
+{
   let text: string;
-
-  if (isWeb) {
-    text = await fetch(csvUri).then(r => r.text());
-  } else {
-    text = await fetch(csvUri).then(r => r.text());
-
-  }
-
-  return parseCsv(text);
+  text = await fetch(csvUri).then(r => r.text()); // Fetch the CSV file content as plain text
+  return parseCsv(text);  // Parse the CSV text into structured data
 }

@@ -8,88 +8,36 @@ const reducer_function = (state: any, action: any) => {
   // Note that these functions only affect the state - things like the visible cursor
   // position and playback rate of the audio must be made to depend on the state
   // (likely with useEffect) in order to work.
+  
   switch (action.type) {
+
     // Example of dispatch call with no special parameters:
     // this object-join notation causes state to only change in one property, playing,
     // which becomes the opposite of what it was before.
-    case "start/stop":
-      return { ...state, ...{ playing: !state.playing } };
 
-    // Example of dispatch call with special parameter:
-    // dispatch( {type:'change_reset', measure:'3'}) will leave
-    // state unchanged except for the resetMeasure property, which becomes 3
-    case "change_reset":
-      return { ...state, ...{ resetMeasure: action.measure as number } };
+    case "start/stop": // Toggle boolean (true or false) to determine current playing state
+      return { ...state, ...{ playing: !state.playing } }; 
 
-    // Multiple properties can be updated in tandem, as the playrate and position
-    // would be in every syncrhonization request
-    case "increment":
+    case "update_piece_info": // Keep current global state values, but update tempo and beatsPerMeasure to what was passed in
       return {
         ...state,
         ...{
-          playRate: action.rate as number,
-          timestamp: action.time as number,
-        },
-      };
-    
-    case "swap_mode":
-      return {
-        ...state,
-        ...{
-          inPlayMode: !state.inPlayMode
-        }
-      }
-
-    // When resetting, move the cursor, then adjust the timestamp accordingly and reset the playback rate
-    case "reset":
-      console.log("It should be resetting now.");
-      var reset_time =
-        (60 * state.time_signature.Numerator * (state.resetMeasure - 1)) /
-        state.synth_tempo;
-      state.accompanimentSound.setPositionAsync(reset_time * 1000);
-      return {
-        ...state,
-        ...{ playing: false, playRate: 1.0, timestamp: reset_time },
-      };
-    case "cursor_update":
-      return { ...state, ...{ cursorTimestamp: action.time as number } };
-    case "change_tempo":
-      return { ...state, ...{ tempo: action.tempo as number } };
-    case "update_piece_info":
-      return {
-        ...state,
-        ...{
-          time_signature: action.time_signature,
-          score_tempo: action.tempo as number,
           tempo: action.tempo as number,
           beatsPerMeasure: action.beatsPerMeasure,
         },
       };
-    case "new_session":
-      console.log("New session token received.");
-      return { ...state, ...{ sessionToken: action.token } };
-    case "new_audio":
-      console.log("New audio received.");
-      return {
-        ...state,
-        ...{ accompanimentSound: action.sound, synth_tempo: state.tempo },
-      };
-
-    // Here, it's decided that the mechanism to change the score also resets the play
-    case "change_score":
+  
+    case "change_score": // Keep current global state values, but update score name, accompanimentSound (not applicable in Evaluator project), and set playing to false
       return {
         ...state,
         ...{
           score: action.score,
           accompanimentSound: action.accompanimentSound,
           playing: false,
-          timestamp: 0.0,
-          playRate: 1.0,
         },
       };
 
-    // Gets list of scores - without overwriting uploaded score
-    case "new_scores_from_backend":
+    case "new_scores_from_backend": // Gets list of scores - without overwriting uploaded score
       var known_files = state.scores;
       var new_files = action.scores.filter(
         (filename: string) => !known_files.includes(filename),
@@ -102,9 +50,9 @@ const reducer_function = (state: any, action: any) => {
         },
       };
 
-      case "new_score_from_upload":
+      case "new_score_from_upload": // Keep the existing state and add the new score content to the scoreContents object using the filename as the key
         return {
-          ...state, // Keep the existing state
+          ...state, 
           scores: [...state.scores, action.score.filename], // Add the new score filename to the scores array
           score: action.score.filename, // Set the current score to the newly uploaded filename
           scoreContents: { 
@@ -113,37 +61,27 @@ const reducer_function = (state: any, action: any) => {
           },
         };
 
-      case "change_reference_audio":
-        // store the URI so ScoreFollower can pick it up
+      case "change_reference_audio": // Keep the existing state and update the URI for reference audio 
         console.log("[reducer] referenceAudioUri stored in state:", action.referenceAudioUri);
         return {
           ...state,
           referenceAudioUri: action.referenceAudioUri as string,
         };
 
-      // New action to set estimated beat
-      case "SET_ESTIMATED_BEAT":
+      case "SET_ESTIMATED_BEAT": // Keep the existing state and  update estimatedBeat variable
         console.log("[reducer] Estimated beat:", action.payload);
         return {
           ...state,
           estimatedBeat: action.payload as number,
         };
 
-      // New action for errors in beat estimation
-      case "SET_ESTIMATED_BEAT_ERROR":
-        console.error("[reducer] Estimated beat error:", action.payload);
-        return {
-          ...state,
-          estimatedBeatError: action.payload as string,
-        };
-      case "change_bottom_audio":
-        // store the URI so ScoreFollower can pick it up
-        console.log("[reducer] bottomAudioUri stored in state:", action.bottomAudioUri);
+      case "change_bottom_audio": // Keep the existing state and update the URI for playback audio (second instrument - only used in Companion Project) audio 
         return {
           ...state,
           bottomAudioUri: action.bottomAudioUri as string,
         };
-      case "toggle_loading_performance":
+
+      case "toggle_loading_performance": // Keep the existing state and toggle the loadingPerformance boolean (true or false values)
         return {
           ...state,
           loadingPerformance: !state.loadingPerformance,

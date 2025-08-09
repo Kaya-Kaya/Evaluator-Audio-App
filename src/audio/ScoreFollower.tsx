@@ -1,7 +1,7 @@
 const wav = require('node-wav');
 
 import { resampleAudio, toMono } from '../utils/audioUtils';
-import { Features, FeaturesConstructor } from './Features';
+import { Features, FeaturesConstructor } from './features';
 import OnlineTimeWarping from './OnlineTimeWarping';
 
 /**
@@ -81,7 +81,7 @@ export class ScoreFollower {
 
     console.log('ScoreFollower.loadRefFromAudio(): fetching', refUri);
 
-    // 1. Fetch the WAV file as ArrayBuffer
+    // Fetch the WAV file as ArrayBuffer
     const res = await fetch(refUri);
     if (!res.ok) {
         throw new Error(`Failed to fetch ${refUri}: ${res.status} ${res.statusText}`);
@@ -92,16 +92,16 @@ export class ScoreFollower {
     console.log('-- Fetched buffer byteLength=', arrayBuffer.byteLength);
 
     console.log('-- Decoding WAV…');
-    // 2. Decode WAV buffer
+    // Decode WAV buffer
     const result = wav.decode(arrayBuffer);
     console.log('-- Decoded channels=', result.channelData.length, 'origSR=', result.sampleRate);
     console.log('-- Converting to mono…');
 
-    // 3. Convert to Mono if needed 
+    // Convert to Mono if needed 
     let audioData = toMono(result.channelData);
     console.log(`-- Resampling from ${result.sampleRate} → ${sr}…`);
 
-    // 4. Resample if needed 
+    // Resample if needed 
     audioData = resampleAudio(audioData, result.sampleRate, sr)
     console.log('-- Resampled data length=', audioData.length);
 
