@@ -1,9 +1,8 @@
-// src/utils/theme.ts
 import { useState, useRef } from "react";
-import { Animated, Platform } from "react-native";
+import { Animated } from "react-native";
 export type ThemeMode = "light" | "dark";
 
-export interface ThemeAnimations {
+export interface ThemeAnimations { // Define interface for the return type
   theme: ThemeMode;
   containerBackgroundColor: Animated.AnimatedInterpolation<string>;
   textColor: Animated.AnimatedInterpolation<string>;
@@ -15,6 +14,27 @@ export interface ThemeAnimations {
   toggleTheme: () => void;
 }
 
+/**
+ * React hook for managing and animating light/dark theme transitions.
+ *
+ * This hook:
+ * - Maintains the current theme mode ("light" or "dark") in state.
+ * - Creates and stores `Animated.Value` references for animating UI colors.
+ * - Interpolates multiple themed color values (backgrounds, text, buttons, borders)
+ *   from light to dark mode and vice versa.
+ * - Provides a `toggleTheme` function that smoothly animates between modes.
+ * 
+ * @returns {ThemeAnimations} An object containing:
+ *   - `theme`: The current theme mode ("light" or "dark").
+ *   - `containerBackgroundColor`: Animated color for main container.
+ *   - `textColor`: Animated color for standard text.
+ *   - `invertTextColor`: Animated inverted text color.
+ *   - `sidebarBackgroundColor`: Animated color for sidebar areas.
+ *   - `mainContentBackgroundColor`: Animated color for main content areas.
+ *   - `buttonBackgroundColor`: Animated color for buttons.
+ *   - `borderBottomColor`: Animated color for bottom borders.
+ *   - `toggleTheme()`: Function to toggle the theme with animation.
+ */
 export function useThemeAnimations(): ThemeAnimations {
     // State to conditionally render the style type of the components (can only be "light" or "dark")
     const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -96,6 +116,3 @@ export function useThemeAnimations(): ThemeAnimations {
         toggleTheme,
     };
 }
-
-  
-  

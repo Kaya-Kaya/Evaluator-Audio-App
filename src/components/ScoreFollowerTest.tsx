@@ -99,10 +99,11 @@ export default function ScoreFollowerTest({
     if (!score) return; // Do nothing if no score is selected 
 
     const base = score.replace(/\.musicxml$/, ''); // Retrieve score name (".musicxml" removal)
-
-    dispatch({ type: 'start/stop',});
-    dispatch({type: 'toggle_loading_performance'})
-    setPerformanceComplete(false);
+    
+    // These booleans are mainly used to disable certain features at certain times
+    dispatch({ type: 'start/stop',}); // Toggle playing boolean (to true in this case)
+    dispatch({type: 'toggle_loading_performance'}) // Toggle loading boolean (to true in this case)
+    setPerformanceComplete(false); // Set performance complete boolean to false 
 
     try {
       
@@ -113,7 +114,7 @@ export default function ScoreFollowerTest({
       console.log('-- ScoreFollower created');
  
       const follower = followerRef.current!; 
-      const refFeatures = follower.ref.featuregram;
+      const refFeatures = follower.ref.featuregram; // Get reference features from follower instance
 
       // Extract and set sample rate and window length from the ScoreFollower instance
       const { sr, winLen } = follower;
@@ -155,7 +156,7 @@ export default function ScoreFollowerTest({
         console.log('-- CSV URI =', csvUri);
 
         console.log('-- Calling loadCsvInfo(csvUri, isWeb=', isWeb, ')…');
-        const rows = await loadCsvInfo(csvUri, isWeb); // Obtain rarray of csv rows (info on each note of score such as beat value, ref time when note is played, etc.)
+        const rows = await loadCsvInfo(csvUri); // Obtain rarray of csv rows (info on each note of score such as beat value, ref time when note is played, etc.)
         console.log('-- Loaded CSV rows count =', rows.length);
 
         csvDataRef.current = rows; // Save the parsed CSV rows for downstream use
@@ -178,13 +179,12 @@ export default function ScoreFollowerTest({
 
       }
 
-      // Show full path
-      console.log(pathRef.current)
-      setWarpingPath(pathRef.current);
+      console.log(pathRef.current) // Show full path
+      setWarpingPath(pathRef.current); // Save warping path in local "warpingPath" state
        
       const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => { // Callback to handle audio playback status updates
         if (!status.isLoaded) return;  // Exit early if sound isn't loaded
-        const currentTimeSec = status.positionMillis / 1000;  // Convert current playback time from milliseconds to samples
+        const currentTimeSec = status.positionMillis / 1000;  // Convert current playback time from milliseconds to seconds
 
         while (  // Process only if the frame is within bounds and we have passed a predicted time of current csv row 
           nextIndexRef.current < csvDataRef.current.length &&
@@ -197,22 +197,20 @@ export default function ScoreFollowerTest({
 
         // Handle end of playback
         if (status.didJustFinish) {
-          dispatch({ type: 'start/stop',});
-          setPerformanceComplete(true);
-          dispatch({ type: 'SET_ESTIMATED_BEAT', payload: 0}); 
-          nextIndexRef.current = 0;                
-          pathRef.current = [];
-          setWarpingPath([]);
-          soundRef.current?.setOnPlaybackStatusUpdate(null);
+          dispatch({ type: 'start/stop',}); // Toggle "playing" boolean (to false in this case)
+          setPerformanceComplete(true); // Toggle performanceComplete booelan to true
+          dispatch({ type: 'SET_ESTIMATED_BEAT', payload: 0});  // Reset beat value to 0 since performance is done (cursor is visually at end still, need to select another score to re-render the sheet)
+          nextIndexRef.current = 0; // Reset index ref so we can play again and update estimated beat properly in the while loop above
+          soundRef.current?.setOnPlaybackStatusUpdate(null); // Stop listening for playback updates 
         }
       };
 
-      const soundSource = { uri: liveFile.uri };
-      dispatch({type: 'toggle_loading_performance'})
+      const soundSource = { uri: liveFile.uri }; // Extract live wav file's uri
+      dispatch({type: 'toggle_loading_performance'})  // Toggle loading boolean (to false in this case)
 
       // Create and load the sound object from the live audio URI
       const { sound } = await Audio.Sound.createAsync(
-        soundSource, // Audio source
+        soundSource, // Pass in the live wav file's uri as argument 
         {
           shouldPlay: true, // Automatically start playback once loaded
           progressUpdateIntervalMillis: 20, // Set how often status updates are triggered 
@@ -230,11 +228,14 @@ export default function ScoreFollowerTest({
 
   return (
     <View>
+      {/* Show tempo of selected score to be played */}
       {bpm ? (
         <Text style={styles.tempoText}>Reference Tempo: {bpm} BPM</Text>
       ) : null}
 
       <View style={styles.row}>
+
+        {/* Web version of wav file upload */}
         <View style={styles.pickerContainer}>
           {Platform.OS === 'web' ? (
             <>
@@ -251,6 +252,7 @@ export default function ScoreFollowerTest({
                 onPress={() => inputRef.current?.click()}
                 disabled={state.playing}
               >
+                {/* Display wav file name on button */}
                 <Text
                   style={styles.buttonText}
                   numberOfLines={1}
@@ -261,11 +263,14 @@ export default function ScoreFollowerTest({
               </TouchableOpacity>
             </>
           ) : (
+
+            /* Mobile version of wav file upload */
             <TouchableOpacity
               style={[styles.fileButton, state.playing && styles.disabledButton]}
               onPress={onMobilePress}
               disabled={state.playing}
             >
+              {/* Display wav file name on button */}
               <Text
                 style={styles.buttonText}
                 numberOfLines={1}
@@ -277,23 +282,25 @@ export default function ScoreFollowerTest({
           )}
         </View>
 
+        {/* Display Tempo Graph button */}
         <View style={styles.graphContainer}>
           <TempoGraph
-            refTempo={bpm}
-            beatsPerMeasure={state.beatsPerMeasure}
-            warpingPath={warpingPath}
-            scoreName={score.replace(/\.musicxml$/, '')}
-            disabled={!performanceComplete || liveFile == null}
-            frameSize={frameSize}
-            sampleRate={sampleRate}
+            refTempo={bpm} // Pass in ref tempo of score for calculation
+            beatsPerMeasure={state.beatsPerMeasure} // Pass in global beatPerMeasure state for calculation
+            warpingPath={warpingPath} // Pass in computed warping path for calculation
+            scoreName={score.replace(/\.musicxml$/, '')} // Selected score name
+            disabled={!performanceComplete || liveFile == null} // Disable if we are in a performance or no wav file was uploaded
+            frameSize={frameSize} // Pass frame size for calculation
+            sampleRate={sampleRate} // Pass in sample rate for calculation
           />
         </View>
       </View>
 
+      {/* Start Performance button */}
       <TouchableOpacity
         style={[styles.button, (state.score === "" || state.playing || !liveFile) && styles.disabledButton]}
-        onPress={runFollower}
-        disabled={state.score === "" || state.playing || !liveFile}
+        onPress={runFollower} 
+        disabled={state.score === "" || state.playing || !liveFile} // Disabled when no score is selected or already playing performance or no uploaded wav file
       >
         <Text style={styles.buttonText}>
           {state.playing ? 'Running...' : 'Play'}
@@ -303,6 +310,7 @@ export default function ScoreFollowerTest({
   );
 }
 
+// Define styles for the components using StyleSheet
 const styles = StyleSheet.create({
 
   button: {

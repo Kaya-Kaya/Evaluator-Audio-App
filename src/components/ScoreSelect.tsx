@@ -25,12 +25,14 @@ export function Score_Select({ // Data passed from App.tsx
   // Array of score names used to render the available scores for the app 
   // Entries are used within a hashmap to access certain data needed for the selected score
   const musicxmlFiles: string[] = [
-    'air_on_the_g_string.musicxml',
+    'air_on_the_g_string.musicxml', 
     'schumann_melodyVLCduet.musicxml',
-    'sonata.musicxml',
-    'hark.musicxml',
-    'ode_to_joy.musicxml', 
-    'green_sleeves.musicxml'
+    'ode_to_joy.musicxml', // NOTE: csv and ref audio for this score to play starts about 4 secs into the performance (piece will not work if live audio starts playing at 0 secs instead of 4ish)
+    
+    // no csv data for the bottom 3 scores so they are commented out for now
+    // 'sonata.musicxml',
+    // 'hark.musicxml',
+    // 'green_sleeves.musicxml'
   ];
 
   // Populate our global stat.scores with the given scores in musicxmlFiles 
@@ -111,6 +113,7 @@ export function Score_Select({ // Data passed from App.tsx
   );
 }
 
+// Define styles for the components using StyleSheet
 const styles = StyleSheet.create({
 
   // Main text styles (text labels)

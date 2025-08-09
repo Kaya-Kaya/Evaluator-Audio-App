@@ -1,5 +1,4 @@
 // Import necessary modules and components from the Expo and React Native libraries
-import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, useWindowDimensions, ScrollView, Animated, Platform } from "react-native";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { Score_Select } from "./src/components/ScoreSelect";

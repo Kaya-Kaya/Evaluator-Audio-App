@@ -1,3 +1,4 @@
+{/* NOTE: Component was only created to obtain wav files from given MIDIs but we no longer need it since we can just get wav files directly */}
 import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { WebView } from 'react-native-webview';

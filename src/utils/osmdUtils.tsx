@@ -3,6 +3,18 @@ import { OpenSheetMusicDisplay, Cursor, Fraction } from 'opensheetmusicdisplay';
 import { Platform } from 'react-native';
 import scoresData from '../score_name_to_data_map/scoreToMusicxmlMap';
 
+/**
+ * Initialize and render OpenSheetMusicDisplay in a **web** environment.
+ *
+ * @param osmContainerRef - Ref to the HTML div container where OSMD should render.
+ * @param osdRef - Mutable ref to store the OSMD instance for later access.
+ * @param cursorRef - Mutable ref to store the OSMD cursor instance.
+ * @param state - Global or component state containing the selected score name/content.
+ * @param dispatch - Function to dispatch actions to update global state.
+ * @param isSmallScreen - Flag to adjust zoom for small screen devices.
+ * @returns void
+ */
+
 export const initOsmdWeb = (osmContainerRef: React.RefObject<HTMLDivElement>,
   osdRef: React.MutableRefObject<OpenSheetMusicDisplay | null>,
   cursorRef: React.MutableRefObject<Cursor | null>,
@@ -66,6 +78,14 @@ export const initOsmdWeb = (osmContainerRef: React.RefObject<HTMLDivElement>,
     } 
 } 
 
+/**
+ * Peek at the beat length of the **next note** under the cursor without moving it permanently.
+ *
+ * @param cursor - OSMD Cursor instance.
+ * @param instruments - Array of OSMD Instrument objects.
+ * @param timeDenominator - Denominator from the active time signature.
+ * @returns Number of beats for the next note (scaled to timeDenominator).
+ */
 export const peekAtNextBeat = (
   cursor: Cursor,
   instruments: any[],
@@ -85,6 +105,15 @@ export const peekAtNextBeat = (
   cursor.previous();
   return delta;
 }
+
+/**
+ * Advance the cursor to the **next note** and return its beat length.
+ *
+ * @param cursor - OSMD Cursor instance.
+ * @param instruments - Array of OSMD Instrument objects.
+ * @param timeDenominator - Denominator from the active time signature.
+ * @returns Number of beats moved forward (scaled to timeDenominator).
+ */
 
 export const advanceToNextBeat = (
   cursor: Cursor,
@@ -106,6 +135,14 @@ export const advanceToNextBeat = (
   return delta;
 }
 
+/**
+ * Peek at the beat length of the **current note** under the cursor.
+ *
+ * @param cursor - OSMD Cursor instance.
+ * @param instruments - Array of OSMD Instrument objects.
+ * @param timeDenominator - Denominator from the active time signature.
+ * @returns Number of beats for the current note (scaled to timeDenominator).
+ */
 export const peekAtCurrentBeat = (
   cursor: Cursor,
   instruments: any[],
@@ -124,6 +161,20 @@ export const peekAtCurrentBeat = (
   return delta;
 }
 
+/**
+ * Builds the complete HTML string for rendering OSMD inside a **React Native WebView**.
+ *
+ * This HTML:
+ * - Loads the OSMD script from CDN.
+ * - Renders the provided MusicXML.
+ * - Implements `window.stepCursor()` for animating the playback cursor by beats.
+ * - Extracts beats-per-measure and tempo from the XML.
+ * - Posts a `loaded` message back to the React Native layer via `window.ReactNativeWebView.postMessage(...)`.
+ *
+ * @param xml - MusicXML content to render.
+ * @param defaultZoom - Default zoom factor to apply (defaults to 0.45 for mobile).
+ * @returns A self-contained HTML string for injection into a WebView.
+ */
 export const buildOsmdHtmlForNative = (xml: string, defaultZoom = 0.45): string => {
     const escaped = xml.replace(/`/g, "\\`").replace(/<\/script>/g, "<\\/script>");
 
@@ -190,17 +241,7 @@ export const buildOsmdHtmlForNative = (xml: string, defaultZoom = 0.45): string 
 
             // Step logic exactly as web version
             function stepFn() {
-              // peek next delta
-              cursor.next();
-              let cur = cursor.VoicesUnderCursor(osm.Sheet.Instruments[0]);
-              let delta = 0;
-              if (cur.length && cur[0].Notes.length) {
-                const len = cur[0].Notes[0].Length;
-                const num = len.Numerator === 0 ? 1 : len.Numerator;
-                delta = (num / len.Denominator) * denom;
-              }
-              cursor.previous();
-
+              
               // if we’ve already reached the target
               if (moved >= toMove) {
                 const leftover = moved - toMove;
@@ -272,7 +313,14 @@ export const buildOsmdHtmlForNative = (xml: string, defaultZoom = 0.45): string 
   </html>`;
 };
 
-// Define the handler to catch messages sent from the WebView back to React Native
+
+/**
+ * Handles messages sent from the OSMD WebView back to React Native.
+ *
+ * @param raw - Raw message string from the WebView's `postMessage`.
+ * @param dispatch - Function to dispatch state updates in React Native.
+ * @returns void
+ */
 export const onHandleOsmdMessageForNative = (raw: string, dispatch: any) => {
   try {
     // Extract the message string sent via window.ReactNativeWebView.postMessage(...)

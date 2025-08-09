@@ -14,10 +14,6 @@ interface TempoGraphProps {
   frameSize: number; // ScoreFollower's frame size
 }
 
-// // Bounds for BPM - made for BPM spikes
-// const MIN_BPM = 40;
-// const MAX_BPM = 240;
-
 // Constant used for running average of measures
 const SMOOTH_RADIUS = 1; 
 
@@ -30,7 +26,7 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
   const [showGraph, setShowGraph] = useState(false); // Boolean for showing graph
   const [applySmoothing, setApplySmoothing] = useState(true); // Boolean for smoothing option
 
-  // 1) Map DTW path -> fractional beats + live times
+  // Map DTW path -> fractional beats + live times
   const beatTimes = useMemo(
     () => warpingPath.map(([refIdx, liveIdx]) => {
       const refTimeSec  = (refIdx  * FRAME_SIZE) / SAMPLE_RATE; // Convert ref index into ref time
@@ -41,7 +37,7 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
     [warpingPath, refTempo]
   );
 
-  // 2) Interpolate -> exact event time per integer beat
+  // Interpolate -> exact event time per integer beat
   const beatEventTimes = useMemo(() => {
     if (!beatTimes.length) return []; 
     const events: number[] = []; // Stores live time for each whole beat
@@ -65,7 +61,7 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
     return events;
   }, [beatTimes]);
 
-  // 3) Compute raw tempo per measure
+  // Compute raw tempo per measure
   const rawTempoByMeasure = useMemo(() => {
 
     const events = beatEventTimes; // Array of live times matched to each integer beat i
@@ -85,7 +81,7 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
     return arr;
   }, [beatEventTimes, beatsPerMeasure]);
 
-  // 4) Smooth tempo curve
+  // Smooth tempo curve
   const smoothTempo = useMemo(() => {
     const bpms = rawTempoByMeasure.map(m => m.tempo); // Get BPMs for each measure
     return bpms.map((_, i) => { // Go through each BPM 
@@ -97,7 +93,7 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
     });
   }, [rawTempoByMeasure]);
 
-  // 5) Overall tempo
+  // Overall tempo
   const overallTempo = useMemo(() => {
     if (beatEventTimes.length < 2) return 0;
 
@@ -120,7 +116,7 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
   return (
     <View style={styles.container}>
       
-      {/* Button for showing / hiding tempo by measure graph */}
+      {/* Button for showing tempo by measure graph */}
       <TouchableOpacity
         style={[styles.button, disabled && styles.disabledButton]}
         disabled={disabled}
@@ -144,11 +140,14 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
           <TouchableWithoutFeedback onPress={() => setShowGraph(false)}>
             <View style={styles.backdrop} />
           </TouchableWithoutFeedback>
+
            {/* Score info - ref tempo, overall soloist tempo, etc.*/}
           <View style={styles.popupContainer}>
             <Text style={styles.popupTitle}>{
               `${scoreName} — Tempo by Measure`
             }</Text>
+
+            {/* Smoothing option for graph*/}
             <View style={styles.filterContainer}>
               <Text style={styles.filterLabel}>Smoothing:</Text>
               <Switch
@@ -160,6 +159,7 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
               </Text>
             </View>
 
+            {/* Data display: score tempo vs. your overall tempo*/}
             <Text style={styles.infoText}>
               Ref Tempo: {refTempo} BPM
             </Text>
@@ -167,13 +167,14 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
               Overall: {displayOverall} BPM
             </Text>
 
+            {/* Graph display */}
             <View style={styles.chartArea}>
                {/* Y label */}
               <Text style={styles.yAxisLabel}>Tempo (BPM)</Text>
               <ScrollView
                 horizontal showsHorizontalScrollIndicator>
                 <LineChart
-                  data={{ labels, datasets: [{ data }] }}
+                  data={{ labels, datasets: [{ data }] }} // Pass in x and y values into graph
                   width={chartW}
                   height={200}
                   chartConfig={chartConfig}
@@ -182,25 +183,26 @@ const TempoGraph: React.FC<TempoGraphProps> = ({ warpingPath, refTempo, beatsPer
                   fromZero
                   yLabelsOffset={10}
                   xLabelsOffset={-10}
-                  
-                    renderDotContent={({ x, y, index }) => (
-                      <SvgText
-                        key={index}
-                        x={x}
-                        y={y - 8}                  // shift text a bit above the dot
-                        fontSize="10"
-                        fill="#000"
-                        textAnchor="middle"        // center horizontally
-                      >
-                        {data[index]}
-                      </SvgText>
-                    )}
+                  renderDotContent={({ x, y, index }) => (
+                    <SvgText
+                      key={index}
+                      x={x}
+                      y={y - 8}                  // shift text a bit above the dot
+                      fontSize="10"
+                      fill="#000"
+                      textAnchor="middle"        // center horizontally
+                    >
+                      {data[index]}
+                    </SvgText>
+                  )}
                 />
               </ScrollView>
             </View>
             {/* X label*/}
+
             <Text style={styles.xAxisLabel}>Measure Number</Text>
 
+            {/* Button for hiding tempo by measure graph */}
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setShowGraph(false)}
@@ -224,7 +226,7 @@ const chartConfig = {
   propsForDots: { r: '4', strokeWidth: '1', stroke: '#1e90ff' }
 };
 
-// Styles for UI
+// Define styles for the components using StyleSheet
 const styles = StyleSheet.create({
  container: {
     alignSelf: 'flex-start',
