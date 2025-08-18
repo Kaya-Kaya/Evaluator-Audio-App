@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "companion-app",
-    "slug": "companion-app",
+    "name": "evaluator-app",
+    "slug": "evaluator-app",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
