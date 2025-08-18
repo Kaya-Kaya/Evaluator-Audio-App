@@ -1,6 +1,6 @@
 # Evaluator Audio App
 
-**Evaluator Audio App** is your on-demand accompanist, allowing you to practice with professional-quality accompaniment anytime, anywhere.
+**Evaluator Audio App** is your on-demand practice guide, allowing you to practice with score progress visualization and mistake detection anytime, anywhere.
 
 ---
 
