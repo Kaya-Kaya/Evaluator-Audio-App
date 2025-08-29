@@ -1,4 +1,5 @@
 import waveResampler from 'wave-resampler';
+import { decode } from 'wav-decoder';
 
 /**
  * Converts an array of Float32Array channel data into a single mono Float32Array.
@@ -128,4 +129,32 @@ export function pythonFormat(v : number): string
     // Fixed decimal: JS’s toString gives the shortest fixed repr for 1e‑4 ≤ |v| < 1e17
     return v.toString();
   }
+}
+
+export async function prepareAudio(fileUri: string, sampleRate: number) {
+  // Fetch the WAV file as ArrayBuffer
+  const res = await fetch(fileUri);
+  if (!res.ok) {
+      throw new Error(`Failed to fetch ${fileUri}: ${res.status} ${res.statusText}`);
+  }
+  
+  const arrayBuffer = await res.arrayBuffer();
+
+  console.log('-- Fetched buffer byteLength=', arrayBuffer.byteLength);
+
+  console.log('-- Decoding WAV…');
+  // Decode WAV buffer
+  const result = decode(arrayBuffer);
+  console.log('-- Decoded channels=', result.channelData.length, 'origSR=', result.sampleRate);
+  console.log('-- Converting to mono…');
+
+  // Convert to Mono if needed 
+  let audioData = toMono(result.channelData);
+  console.log(`-- Resampling from ${result.sampleRate} → ${sampleRate}…`);
+
+  // Resample if needed 
+  audioData = resampleAudio(audioData, result.sampleRate, sampleRate)
+  console.log('-- Resampled data length=', audioData.length);
+
+  return audioData;
 }
