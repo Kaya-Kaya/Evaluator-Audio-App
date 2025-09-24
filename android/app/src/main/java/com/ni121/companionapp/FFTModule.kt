@@ -6,23 +6,10 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableArray
-
 import be.tarsos.dsp.util.fft.FFT
 import kotlin.FloatArray
 
 class FFTModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
-    companion object {
-        init {
-            try {
-                Log.d("FFTModule", "Loading native-lib")
-                System.loadLibrary("native-lib")
-                Log.d("FFTModule", "Successfully loaded native-lib")
-            } catch (e: UnsatisfiedLinkError) {
-                Log.d("FFTModule", "Failed to load native-lib", e)
-            }
-        }
-    }
-
     override fun getName(): String {
         return "FFTModule"
     }
@@ -32,8 +19,7 @@ class FFTModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         try {
             val fftLib = FFT(fftSize)
 
-            val length = signalDataIn.size()
-            val signalData = FloatArray(length)
+            val signalData = FloatArray(signalDataIn.size())
             for (i in signalData.indices) {
                 signalData[i] = signalDataIn.getDouble(i).toFloat()
             }
