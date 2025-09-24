@@ -19,8 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-import { Features, FeaturesConstructor } from "./Features";
+import { Features, FeaturesConstructor } from "./features";
+import { NativeModules } from "react-native";
 const { fft } = require('fft-js');
+
+let FFTModule: any;
+try {
+    FFTModule = NativeModules.FFTModule;
+    console.log("FFTModule =", FFTModule);
+    console.log("FFTModule.fft =", FFTModule?.fft);
+} catch (e) {
+    console.log("Failed to load FFTModule: ", e);
+}
 
 /**
  * Returns the center frequency for each MIDI pitch in the range [start_pitch, end_pitch).

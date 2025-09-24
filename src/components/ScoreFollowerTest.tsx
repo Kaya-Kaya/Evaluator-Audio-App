@@ -127,6 +127,8 @@ export default function ScoreFollowerTest({
 
       let buffer: ArrayBuffer; // Define an array buffer
 
+      const startTime = new Date();
+
       console.log('-- Loading live audio buffer...');
       buffer = await fetch(liveFile.uri).then(r => r.arrayBuffer()); // Web and mobile version of initializing array buffer given live uri 
       console.log('-- Buffer loaded, byteLength=', buffer.byteLength);
@@ -139,6 +141,10 @@ export default function ScoreFollowerTest({
       audioData = resampleAudio(audioData, result.sampleRate, sampleRate) // Resample the resulting audio data if needed
       audioDataRef.current = audioData;
       console.log('-- Audio data prepared, length=', audioData.length);
+
+      const endTime = new Date();
+
+      console.log(`Loading live audio took ${endTime - startTime}ms`);
 
       console.log('-- Computing alignment path...');
       pathRef.current = precomputeAlignmentPath(audioData, frameSize, follower); // Compute alignment path 

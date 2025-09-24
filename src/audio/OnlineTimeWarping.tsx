@@ -40,6 +40,7 @@ export default class OnlineTimeWarping {
     runCount: number;
     lastRefIdx: number;
     path_z: number[];  // Chosen path for debugging or tracking
+    netCostComputationTime: number;
 
     constructor(ref: Features<unknown>, bigC: number, maxRunCount: number, diagWeight: number) {
         this.ref = ref;
@@ -58,6 +59,9 @@ export default class OnlineTimeWarping {
 
         this.lastRefIdx = 0;
         this.path_z = [];
+
+
+        this.netCostComputationTime = 0;
     }
 
     /**
@@ -68,6 +72,8 @@ export default class OnlineTimeWarping {
     insert(audioFrame: number[]): number {
         this.liveIdx += 1;
         this.live.insert(audioFrame);
+
+        const startTime = new Date();
 
         for (let k = Math.max(0, this.refIdx - this.winSize + 1); k <= this.refIdx; k++) {
             this._update_accumulated_cost(k, this.liveIdx);
@@ -89,6 +95,11 @@ export default class OnlineTimeWarping {
 
             if (step === "both") break;
         }
+
+        const endTime = new Date();
+
+        this.netCostComputationTime += endTime - startTime;
+        console.log(`Net cost computation time is ${this.netCostComputationTime}ms`);
 
         let current_ref_position = path[path.length - 1][0];
         this.path_z.push(current_ref_position);

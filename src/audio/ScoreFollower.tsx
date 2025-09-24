@@ -46,7 +46,9 @@ export class ScoreFollower {
     hopLen = winLen,
   ) {
     const instance = new ScoreFollower(FeaturesClass, sr, winLen);
+
     instance.ref = await instance.loadRefFromAudio(refUri, FeaturesClass, sr, winLen, hopLen);
+
     console.log('-- Reference loaded — initializing OTW with bigC=', bigC, 'maxRunCount=', maxRunCount);
 
     instance.otw = new OnlineTimeWarping(instance.ref, bigC, maxRunCount, diagWeight);
@@ -81,6 +83,8 @@ export class ScoreFollower {
 
     console.log('ScoreFollower.loadRefFromAudio(): fetching', refUri);
 
+    let startTime = new Date();
+
     // Fetch the WAV file as ArrayBuffer
     const res = await fetch(refUri);
     if (!res.ok) {
@@ -105,9 +109,16 @@ export class ScoreFollower {
     audioData = resampleAudio(audioData, result.sampleRate, sr)
     console.log('-- Resampled data length=', audioData.length);
 
+    let endTime = new Date();
+    console.log(`Loading reference audio took ${endTime - startTime}ms`);
+
     console.log('-- Building featuregram…');
 
+    startTime = new Date();
     const features = new FeaturesClass(sr, winLen, audioData, hopLen);
+    endTime = new Date();
+
+    console.log(`Reference audio feature encoding took ${endTime - startTime}ms`);
     console.log('-- Featuregram length=', features.featuregram.length);
 
     return features;

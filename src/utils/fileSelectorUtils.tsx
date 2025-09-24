@@ -34,7 +34,7 @@ export const parseWebWavFile = (
 export const pickMobileWavFile = async (): Promise<LiveFile | null> => {
   try {
     const res = await DocumentPicker.getDocumentAsync({  // Open the document picker with .wav file restriction
-      type: 'audio/wav',
+      type: ['audio/wav', 'audio/x-wav', 'audio/wave'],
       copyToCacheDirectory: true, // Cache locally for faster access
     });
     if (!res.canceled && res.assets && res.assets.length > 0) {  // Check if the user selected a file and it contains asset info
